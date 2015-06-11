@@ -12,10 +12,19 @@ Tex.controller('texCtrl', function ($scope, es, $sce) {
     $scope.currentCase = 0;
     $scope.cases = [];
     $scope.init = function () {
+        var password;
+        do {
+            password = prompt("Password");
+        } while (!password || password.length === 0);
         es.params({
             host: "vgc.poly.edu/projects/opsense",
-            index: "yelp"
+            index: "yelp",
+            password: password,
+            user: "propublica"
         });
+        
+        
+        
         $scope.state.search = "";
         window.addEventListener("hashchange", $scope.loadUrl, false);
         $scope.loadStorage();
