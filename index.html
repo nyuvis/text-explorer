@@ -23,6 +23,9 @@
     <script src="js/facets.js"></script>
 </head>
 <body ng-controller="texCtrl" ng-init="init()">
+   <div class="loading" ng-hide="done" style="display:block; z-index: 1000; opacity:1">
+        
+    </div>
     <input type="file" id="uploadBox" style="display:none" fileread="vm.uploadme"/>
     <div id="SearchBar">
        <ul>
@@ -140,5 +143,6 @@
             </div>
         </div>
     </div>
+    
 </body>
 </html>

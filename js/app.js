@@ -23,13 +23,11 @@ Tex.controller('texCtrl', function ($scope, es, $sce) {
             user: "propublica"
         });
         
-        
-        
         $scope.state.search = "";
         window.addEventListener("hashchange", $scope.loadUrl, false);
         $scope.loadStorage();
         $scope.loadUrl();
-        
+        $scope.done = true;
     };
     
     
