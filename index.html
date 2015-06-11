@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html ng-app="Tex">
+<head>
+    <title>Text Explorer</title>
+    <meta charset="UTF-8">
+    <meta name="description" content="" />
+    <meta name="keywords" content="" />
+    <link rel="shortcut icon" href="images/favico.png" />
+    <link href='http://fonts.googleapis.com/css?family=Roboto:400,300,700' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css">
+    <link rel="stylesheet" href="css/style.css" />
+    
+    <script src="vendors/angular.min.js"></script>
+    <script src="vendors/angular-sanitize.min.js"></script>
+    <script src="vendors/elasticsearch.angular.min.js"></script>
+    <script src="vendors/d3.min.js"></script>
+    <script src="http://d3js.org/topojson.v1.min.js"></script>
+    <script src="vendors/d3.layout.cloud.js"></script>
+    <script src="js/states.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/es.js"></script>
+    <script src="js/app.js"></script>
+    <script src="js/facets.js"></script>
+</head>
+<body ng-controller="texCtrl" ng-init="init()">
+    <input type="file" id="uploadBox" style="display:none" fileread="vm.uploadme"/>
+    <div id="SearchBar">
+       <ul>
+           <li><img src="images/logo.png" /></li>
+           <li><input ng-enter="doSearch()" type="search" placeholder="Search" ng-model="state.search" /></li>
+           <li><button ng-click="doSearch()" style="cursor: pointer; font-size:16px"><i class="fa fa-search"></i></button></li>
+           <li>
+               <button ng-click="saveState()" style="cursor: pointer; font-size:16px"><i class="fa fa-floppy-o"></i></button>
+           </li>
+           <li style="padding-top: 4px; padding-left: 10px;">
+              <span ng-repeat="f in facetFilter" class="filter"><i style="padding-left: 6px" class="fa fa-chevron-right"></i> {{f.facet}}:{{f.value}} <div ng-click="removeFilter(f, $index)">Remove</div> </span> 
+           </li>
+           
+       </ul>     
+    </div>
+    <div id="Summary">
+        <div class="stats">
+            <h2>Hits: {{data.total}}</h2><br />
+            <label>From July, 01 2011 to June, 15 2015 </label>
+        </div>
+        <div class="histogram">  
+            <histogram></histogram>
+        </div>
+        </ul>
+    </div>
+    <div id="Data">
+        <div id="Facets">
+            <div class="facet facet-{{facet.directive}}" facet data="facet" loading="loadingFacets" ng-repeat="facet in data.facets | orderBy: 'order'"></div>
+        </div>
+        <div id="RelatedPhrases">
+            <div class="facet facet-{{facet.directive}}" cloud search="state.search" data="data.terms.Significant" loading="loadingTerms"></div>
+        </div>
+        <div id="DocumentsList">
+            <div class="document" ng-repeat="doc in data.docs" ng-click="selectDocument(doc)">
+                <div class="header">
+                    <span class="business">{{doc.business.name}}</span>
+                    <span class="details"> - {{doc.business.category | list}} - {{doc.review.created | date:'MMM dd, yyyy'}}</span>
+                    <span class="stars" ng-bind-html="doc.review.rating | stars"></span>
+                </div>
+                <div class="text" ng-bind-html="HTML(doc.text)"></div>
+            </div>
+            <div class="loadmore" ng-show="data.docs.length < data.total" ng-click="loadMore()">Load More ...</div>
+        </div>
+    </div>
+     <div id="documentDetailView" ng-show="state.selectedDocument" >
+        <div class="window" >
+            <h1>{{state.selectedDocument.business.name}}  <a ng-click="state.selectedDocument = undefined">x close</a></h1>
+            <div class="details">
+               <h2>Review</h2>
+               <table>
+                   <tr><th>Date</th><td>{{state.selectedDocument.review.created | date:short}}</td></tr>
+                   <tr><th>Rating</th><td>{{state.selectedDocument.review.rating }}</td></tr>
+                   <tr><th>Url</th><td><a ng-href="{{state.selectedDocument.review.url}}" target="_blank">Link</a></td></tr>
+               </table>
+                <h2>Business</h2>
+                <table>
+                   <tr><th>Category</th><td>{{state.selectedDocument.business.category | list}}</td></tr>
+                   <tr><th>City</th><td>{{state.selectedDocument.business.city }}</td></tr>
+                   <tr><th>State</th><td>{{state.selectedDocument.business.state }}</td></tr>
+                   <tr><th>Phone</th><td>{{state.selectedDocument.business.phone }}</td></tr>
+                   <tr><th>Avg. Rating</th><td>{{state.selectedDocument.business.rating }}</td></tr>
+                   <tr><th>Review Count</th><td>{{state.selectedDocument.business.review_count }}</td></tr>
+                   <tr><th>Url</th><td><a ng-href="{{state.selectedDocument.business.url}}" target="_blank">Link</a></td></tr>
+               </table>
+    
+                <h2>User</h2>
+                <table>
+                   <tr><th>Name</th><td>{{state.selectedDocument.user.name }}</td></tr>
+                   <tr><th>Gender</th><td>{{state.selectedDocument.user.gender }}</td></tr>
+                   <tr><th>City</th><td>{{state.selectedDocument.user.city }}</td></tr>
+                   <tr><th>State</th><td>{{state.selectedDocument.user.state }}</td></tr>
+   
+               </table>
+                
+            </div>
+            <div class="text">
+                <span ng-bind-html="HTML(state.selectedDocument.text)"></span> <br>
+                <button ng-click="saveDocument(state.selectedDocument)" style="cursor: pointer; font-size:16px"> <i class="fa fa-floppy-o"></i>Save Document</button>
+            </div>
+        </div>
+    </div>
+    <div id="caseView">
+        <div class="toolBar">
+            Case: {{selectedCase.name}} <i class="fa fa-caret-down"></i>
+        </div>
+        <div class="panel">
+           <div class="subBar">
+            <button><i class="fa fa-plus" ng-click="addCase()"></i></button>
+            <button><i class="fa fa-download" ng-click="downloadCases()"></i></button>
+            <button><i class="fa fa-upload" ng-click="upload()"></i></button>
+           </div>
+           <h2>States</h2>
+            <ul>
+                <li ng-repeat="state in selectedCase.states track by $index" ng-click="loadState(state)">
+                {{state.desc}}
+                    <div class="detail">{{state.search}}, {{filtersList(state)}}</div>
+                    <button ng-click="removeState($index); $event.stopPropagation();"><i class="fa fa-trash-o"></i></button>
+                </li>
+            </ul>
+            <h2>Documents</h2>
+            <ul>
+                <li ng-repeat="doc in selectedCase.documents track by $index" ng-click="selectDocument(doc)">{{doc.title}}
+                    <div class="detail"><span ng-repeat="h in doc.details" ng-bind-html="HTML(h)"></span></div>
+                    <button ng-click="removeDoc($index); $event.stopPropagation();"><i class="fa fa-trash-o"></i></button>
+                </li>
+            </ul>
+            <div class="caselist" ng-hide="cases.length <= 1">
+                <h2>Other Cases</h2>
+                <ul class="otherCases">
+                    <li ng-repeat="case in cases track by $index" ng-hide="case.name == selectedCase.name" ng-click="selectCase(case)">{{case.name}}
+                    <button ng-click="removeCase($index); $event.stopPropagation();"><i class="fa fa-trash-o"></i></button>
+                    </li>
+                    
+                </ul>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
