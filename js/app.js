@@ -9,12 +9,15 @@ Tex.controller('texCtrl', function ($scope, es, $sce) {
     $scope.loadingDocuments = 0;
     $scope.loadingTerms = 0;
     $scope.loadingFacets = 0;
+    $scope.loadingBigrams = 0;
     $scope.currentCase = 0;
     $scope.cases = [];
     $scope.init = function () {
         var password;
         do {
-            password = prompt("Password");
+            password = "PeoYurlUci";
+            //password = prompt("Password");
+            
         } while (!password || password.length === 0);
         es.params({
             host: "vgc.poly.edu/projects/opsense",
@@ -238,6 +241,7 @@ Tex.controller('texCtrl', function ($scope, es, $sce) {
         $scope.getDocuments().then(function () {
             $scope.getFacets();
             $scope.getTerms();
+            $scope.getBigrams();
         });
     };
     
@@ -282,6 +286,7 @@ Tex.controller('texCtrl', function ($scope, es, $sce) {
     };
     
     $scope.getTerms = function () {
+        var hasSearch = true;
         if ($scope.state.search.length === 0 && $scope.facetFilter.length === 0) {
             return;
         }
@@ -289,6 +294,17 @@ Tex.controller('texCtrl', function ($scope, es, $sce) {
         es.getTerms($scope.state.search, $scope.facetFilter).then(function (result) {
             $scope.data.terms = result;
             $scope.loadingTerms -= 1;
+        });
+    };
+    
+    $scope.getBigrams = function () {
+        if ($scope.state.search.length === 0 && $scope.facetFilter.length === 0) {
+            return;
+        }
+        $scope.loadingBigrams += 1;
+        es.getBigrams($scope.state.search, $scope.facetFilter).then(function (result) {
+            $scope.data.bigrams = result;
+            $scope.loadingBigrams -= 1;
         });
     };
     

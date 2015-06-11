@@ -169,11 +169,12 @@ Tex.directive("cloud", function () {
     'use strict';
     return {
         restrict: "A",
-        template: '<h1>{{data.facet}}</h1><div class="loading" ng-show="loading > 0">Loading...</div>',
+        template: '<div class="loading" ng-show="loading > 0">Loading...</div>',
         scope: {
             data: '=',
             loading: '=',
-            search: '='
+            search: '=',
+            h: '='
         },
         link: function (scope, elem, attrs) {
             var board = d3.select(elem[0]),
@@ -183,9 +184,9 @@ Tex.directive("cloud", function () {
                 board.selectAll("svg").remove();
                 board.append("svg")
                     .attr("width", 250)
-                    .attr("height", 500)
+                    .attr("height", scope.h)
                     .append("g")
-                    .attr("transform", "translate(125,250)")
+                    .attr("transform", "translate(125," + (scope.h / 2) + ")")
                     .selectAll("text")
                     .data(words)
                     .enter().append("text")
@@ -198,16 +199,19 @@ Tex.directive("cloud", function () {
                     })
                     .text(function (d) { return d.text; })
                     .on("click", function (d) {
-                        console.log(scope);
-                        scope.$parent.appendWord(d.text);
+                        var t = d.text;
+                        if (d.text.indexOf(" ") > -1) {
+                            t = '"' + t + '"';
+                        }
+                        scope.$parent.appendWord(t);
                         
                     });
             }
             scope.$watch(function () { return scope.data; }, function () {
                 if (scope.data) {
-                    var size = d3.scale.linear().range([10, 40]).domain([0, scope.data.max]);
+                    var size = d3.scale.linear().range([10, 35]).domain([0, scope.data.max]);
                     score = d3.scale.linear().range(["#9aafb9", "#FF5722"]).domain([d3.min(scope.data.data, function (d) {return d.score; }), d3.max(scope.data.data, function (d) {return d.score; })]);
-                    d3.layout.cloud().size([250, 500])
+                    d3.layout.cloud().size([250, scope.h])
                         .words(scope.data.data.map(function (d) {return {text: d.key, size: d.doc_count, score: d.score}; }))
                             .padding(5)
                             .rotate(function () { return 0; })

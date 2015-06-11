@@ -55,8 +55,9 @@
         <div id="Facets">
             <div class="facet facet-{{facet.directive}}" facet data="facet" loading="loadingFacets" ng-repeat="facet in data.facets | orderBy: 'order'"></div>
         </div>
-        <div id="RelatedPhrases">
-            <div class="facet facet-{{facet.directive}}" cloud search="state.search" data="data.terms.Significant" loading="loadingTerms"></div>
+        <div id="RelatedPhrases" style="overflow:auto">
+            <div class="facet facet-{{facet.directive}}" cloud search="state.search" h="400" data="data.terms.Significant" loading="loadingTerms"></div>
+            <div class="facet facet-{{facet.directive}}" cloud search="state.search" h="200" data="data.bigrams.Bigrams" loading="loadingBigrams"></div>
         </div>
         <div id="DocumentsList">
             <div class="document" ng-repeat="doc in data.docs" ng-click="selectDocument(doc)">

@@ -246,10 +246,9 @@ ES.factory('es', function (esFactory) {
         };
 
         if (query.query.query_string.query === "*") {
-            console.log("inside");
-            query.aggs.Significant = undefined;
+            query.aggs.Significant = query.aggs.Terms;
         }
-        
+        query.aggs.Terms = undefined;
         return self.client().search({
             index: self.index,
             type: "reviews",
@@ -257,12 +256,44 @@ ES.factory('es', function (esFactory) {
             body: query
         }).then(function (result) {
             var r = {
-                Significant: result.aggregations.Significant ? { max: d3.max(result.aggregations.Significant.buckets, function (d) {return d.doc_count; }), data: result.aggregations.Significant.buckets} : [],
-                Terms: { max: d3.max(result.aggregations.Terms.buckets, function (d) {return d.doc_count; }), data: result.aggregations.Terms.buckets}
+                Significant: result.aggregations.Significant ? { max: d3.max(result.aggregations.Significant.buckets, function (d) {return d.doc_count; }), data: result.aggregations.Significant.buckets} : []
             };
             return r;
         });
     };
+    
+    self.getBigrams = function (search, facets) {
+        var query = {
+            query: self.query(search, facets),
+            aggs: {}
+        },
+            re = /(\w+)/g,
+            
+            exclude = search ? myStop.concat(search.match(re)) : myStop;
+        
+        query.aggs =  {
+            "Bigrams": {
+                "significant_terms": {
+                    "field": "review.text.bigrams",
+                    "size": 20,
+                    "exclude": ".*_.*"
+                }
+            }
+        };
+
+        return self.client().search({
+            index: self.index,
+            type: "reviews",
+            size: 0,
+            body: query
+        }).then(function (result) {
+            var r = {
+                Bigrams: { max: d3.max(result.aggregations.Bigrams.buckets, function (d) {return d.doc_count; }), data: result.aggregations.Bigrams.buckets}
+            };
+            return r;
+        });
+    };
+    
     return self;
 });
 
