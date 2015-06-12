@@ -15,8 +15,7 @@ Tex.controller('texCtrl', function ($scope, es, $sce) {
     $scope.init = function () {
         var password;
         do {
-            password = "PeoYurlUci";
-            //password = prompt("Password");
+            password = prompt("Password");
             
         } while (!password || password.length === 0);
         es.params({
