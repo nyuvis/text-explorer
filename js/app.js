@@ -243,7 +243,7 @@ Tex.controller('texCtrl', function ($scope, es, $sce) {
     
     $scope.loadCases = function () {
         var store = JSON.parse(localStorage.getItem("TextExplorer"));
-        if (!store) {
+        if (!store || store.length === 0) {
             store = [];
             store.push({name: "Default", states: [], documents: []});
         }
