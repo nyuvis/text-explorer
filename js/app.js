@@ -1,38 +1,25 @@
-/*global angular, alert, console, FileReader, prompt*/
+/*jslint  nomen: true*/
+/*global angular, _gaq, Utils, alert, console, moment, FileReader, prompt, d3*/
+
 var Tex = angular.module('Tex', ['ES', 'ngSanitize']);
 
 Tex.controller('texCtrl', function ($scope, es, $sce) {
     'use strict';
-    $scope.state = {};
+    var host = "vgc.poly.edu/projects/opsense",
+        index = "yelp";
+    
+    $scope.security = {};
     $scope.data = {};
-    $scope.facetFilter = [];
-    $scope.loadingDocuments = 0;
-    $scope.loadingTerms = 0;
-    $scope.loadingFacets = 0;
-    $scope.loadingBigrams = 0;
-    $scope.currentCase = 0;
-    $scope.cases = [];
-    $scope.init = function () {
-        var password;
-        do {
-            password = prompt("Password");
-            
-        } while (!password || password.length === 0);
-        es.params({
-            host: "vgc.poly.edu/projects/opsense",
-            index: "yelp",
-            password: password,
-            user: "propublica"
-        });
-        
-        $scope.state.search = "";
-        window.addEventListener("hashchange", $scope.loadUrl, false);
-        $scope.loadStorage();
-        $scope.loadUrl();
-        $scope.done = true;
+    $scope.state = {};
+    $scope.filter = {};
+    $scope.loading = {
+        login: 0,
+        documents: 0,
+        histogram: 0,
+        facets: 0,
+        terms: 0,
+        bigrams: 0
     };
-    
-    
     
     $scope.facets = [
         {order: 1, title: "Rating", field: "review.rating", directive: "rating"},
@@ -41,95 +28,34 @@ Tex.controller('texCtrl', function ($scope, es, $sce) {
         {order: 4, title: "State", field: "business.state", directive: "provider"}
     ];
     
-    $scope.phrases = [
-        {order: 1, title: "Significant", field: "review.rating", directive: "cloud"}
-    ];
-    
-    
-    /*Properties -------------------------*/
+    /*Properties -----------------------------------*/
     $scope.HTML = function (html) {
         return $sce.trustAsHtml(html);
     };
+    
+    $scope.filters = function () {
+        return JSON.parse(JSON.stringify($scope.filter));
+    };
+    
     $scope.filtersList = function (state) {
-        var values = [];
-        state.filters.forEach(function (f) {
-            values.push(f[Object.keys(f)[0]]);
+        var values = [state.filter.search];
+        if (es.hasFacets(state.filter)) {
+            state.filter.filters.forEach(function (f) {
+                values.push(f.value.join(", "));
+            });
+        }
+        
+        return values.join("; ");
+    };
+    
+    /*Interaction ----------------------------------*/
+    $scope.selectDocument = function (doc) {
+        var filter = doc.search ? {search: doc.search} : $scope.filters();
+        filter.id = doc.id;
+        es.getDocument(filter).then(function (docRes) {
+            $scope.state.selectedDocument = docRes;
         });
-        return values.join(", ");
-    };
-    /*Actions -----------------------------*/
-    $scope.loadUrl = function (url, old) {
-        var hash = decodeURIComponent(window.location.hash.substring(1)),
-            urlState = {};
-        if (hash && hash.length > 0) {
-            hash.split("&").forEach(function (v) {
-                var arr, param = v.split('='),
-                    key = param[0],
-                    value = param[1];
-                if (!value) {
-                    value = "";
-                }
-                if (value.charAt(0) === '[') {
-                    value = value.replace("[", "").replace("]", "");
-                    if (value === "") {
-                        arr = [];
-                    } else {
-                        arr = value.split(",").map(function (e) {
-                            var el = e.split(":"), r = {};
-                            r[el[0]] = el[1];
-                            return r;
-                        });
-                    }
-                    urlState[key] = arr;
-                } else {
-                    urlState[v.split('=')[0]] = v.split('=')[1];
-                }
-            });
-        }
-        $scope.loadState(urlState);
-    };
-    
-    $scope.loadState = function (state) {
-        $scope.state.search = state.search || "";
-        $scope.facetFilter = [];
-        if (state.filters) {
-            state.filters.forEach(function (sf) {
-                var key = Object.keys(sf)[0],
-                    facet = $scope.facets.find(function (fc) {return fc.title === key; });
-                if (!facet) {
-                    alert('Error on the url, facet ' + key + ' do not exists');
-                }
-                $scope.facetFilter.push({facet: key, field: facet.field, value: sf[key]});
-            });
-        }
-        $scope.loadData();
-    };
-    
-    $scope.stateToUrl = function () {
-        var url = "", filters;
-        if ($scope.state.search) {
-            url += "search=" + $scope.state.search;
-        }
-        
-        url += '&filters=[' + $scope.facetFilter.map(function (f) {
-            return f.facet + ":" + f.value;
-        }).join(",") + "]";
-        window.location.hash = "#" + url;
-    };
-        
-    $scope.saveState = function () {
-        var desc = prompt("Provide a description for the state", $scope.state.search),
-            state = {
-                search: $scope.state.search,
-                desc: desc,
-                filters: $scope.facetFilter.map(function (f) {
-                    var r = {};
-                    r[f.facet] = f.value;
-                    return r;
-                })
-            };
-        
-        $scope.selectedCase.states.push(state);
+        _gaq.push(['_trackEvent', 'Document', 'Selected', '']);
     };
     
     $scope.saveDocument = function (doc) {
@@ -137,25 +63,88 @@ Tex.controller('texCtrl', function ($scope, es, $sce) {
             doc.saved = true;
             return;
         }
-        es.getDocument(doc.id, $scope.state.search, 50).then(function (docRes) {
-            var document = { id: docRes.id, title: docRes.business.name, details: docRes.high, search: $scope.state.search};
+        var filter = $scope.filters();
+        filter.id = doc.id;
+        es.getDocument(filter, 50).then(function (docRes) {
+            var document = { id: docRes.id, title: docRes.business.name, details: docRes.high, search: $scope.filter.search};
             doc.saved = true;
             $scope.selectedCase.documents.push(document);
             alert('Document Saved');
         });
+        _gaq.push(['_trackEvent', 'Document', 'Saved', '']);
     };
     
-    $scope.selectCase = function ($case) {
-        console.log($case);
-        $scope.selectedCase = $case;
+    $scope.setDate = function (start, end) {
+        $scope.filter.date.from = start;
+        end.stamp = end.stamp === "*" ? es.stats.dateMax.value : end.stamp;
+        $scope.filter.date.to = end;
+        $scope.setUrl();
+        _gaq.push(['_trackEvent', 'Date', 'Changed', '']);
+    };
+    
+    $scope.saveState = function () {
+        var desc = prompt("Provide a description for the state", $scope.filter.search),
+            state = {
+                filter: $scope.filter,
+                desc: desc
+            };
+        $scope.selectedCase.states.push(state);
+        _gaq.push(['_trackEvent', 'State', 'Saved', '']);
+    };
+    
+    $scope.addFacetFilter = function (filter, facet) {
+        $scope.filter.filters = $scope.filter.filters || [];
+        $scope.filter.filters.push({facet: facet.facet, value: [filter.key]});
+        $scope.setUrl();
+        _gaq.push(['_trackEvent', 'Facet', 'Added', '']);
+    };
+    
+    $scope.removeFilter = function (f, idx) {
+        $scope.filter.filters.splice(idx, 1);
+        $scope.setUrl();
+        _gaq.push(['_trackEvent', 'Facet', 'Removed', '']);
     };
     
     $scope.removeState = function (idx) {
         $scope.selectedCase.states.splice(idx, 1);
+        _gaq.push(['_trackEvent', 'State', 'Removed', '']);
     };
     
     $scope.removeDoc = function (idx) {
         $scope.selectedCase.documents.splice(idx, 1);
+        _gaq.push(['_trackEvent', 'Document', 'Removed', '']);
+    };
+    
+    $scope.loadState = function (state) {
+        $scope.filter = state.filter;
+        $scope.setUrl();
+    };
+    
+    $scope.appendWord = function (word) {
+        if ($scope.filter.search && $scope.filter.search.length > 0) {
+            if ($scope.filter.search.indexOf(" ") > 0) {
+                $scope.filter.search = "(" + $scope.filter.search + ")";
+            }
+            $scope.filter.search += " AND " + word;
+        } else {
+            $scope.filter.search = word;
+        }
+        $scope.setUrl();
+        _gaq.push(['_trackEvent', 'Search', 'Added Suggestion', '']);
+    };
+    
+    $scope.loadMore = function () {
+        $scope.loadDocuments($scope.data.documents.length);
+        _gaq.push(['_trackEvent', 'Documents', 'Load More', '']);
+    };
+    
+    $scope.changeSort = function () {
+        $scope.loadDocuments();
+        _gaq.push(['_trackEvent', 'Documents', 'Changed Sort', '']);
+    };
+    
+    $scope.changeSearch = function () {
+        _gaq.push(['_trackEvent', 'Search', 'Changed', '']);
     };
     
     $scope.upload = function () {
@@ -163,10 +152,21 @@ Tex.controller('texCtrl', function ($scope, es, $sce) {
         input.click();
     };
     
-    $scope.loadCases = function (cases) {
+    $scope.loadCasesFromFile = function (cases) {
         $scope.cases = cases;
         $scope.selectedCase = $scope.cases[0];
         alert('Data loaded');
+        _gaq.push(['_trackEvent', 'Cases', 'Upload', '']);
+    };
+    
+    $scope.addCase = function () {
+        var name;
+        do {
+            name = prompt("Type a name for the case");
+        } while (!name || name.length === 0);
+        $scope.cases.push({name: name, states: [], documents: []});
+        $scope.selectedCase = $scope.cases[$scope.cases.length - 1];
+        _gaq.push(['_trackEvent', 'Cases', 'Add', '']);
     };
     
     $scope.downloadCases = function () {
@@ -181,10 +181,67 @@ Tex.controller('texCtrl', function ($scope, es, $sce) {
         } else {
             pom.click();
         }
-        
+        _gaq.push(['_trackEvent', 'Cases', 'Download', '']);
+    };
+       
+    $scope.searchFix = function (orig, newWord) {
+        $scope.filter.search = $scope.filter.search.replace(orig, newWord);
+        $scope.setUrl();
+        _gaq.push(['_trackEvent', 'Search', 'Fixed', '']);
     };
     
-    $scope.loadStorage = function () {
+    /* Feedback ------------------------------------*/
+    $scope.showToolTip = function (content) {
+        $scope.toolTip.html(content);
+        $scope.toolTip
+            .style({
+                "left": (d3.event.x - 10) + "px",
+                "top": (d3.event.y + 15) + "px",
+                "display": "block"
+            });
+    };
+    
+    $scope.hideToolTip = function () {
+        $scope.toolTip
+            .style({
+                "display": "none"
+            });
+    };
+    
+    /*Life Cicle ----------------------------------*/
+    $scope.login = function () {
+        if ($scope.security.password && $scope.security.password.length > 0) {
+            $scope.security.user = "propublica";
+            $scope.loading.login += 1;
+            es.login($scope.security).then(
+                function (result) {
+                    if (result) {
+                        sessionStorage.setItem("user", $scope.security.user);
+                        sessionStorage.setItem("password", $scope.security.password);
+                        $scope.logged = true;
+                        $scope.load();
+                    } else {
+                        $scope.security.status = "Password Invalid!";
+                    }
+                    $scope.loading.login -= 1;
+                }
+            );
+        }
+    };
+    
+    $scope.load = function () {
+        $scope.readUrl();
+        $scope.loadCases();
+    };
+    
+    $scope.loadData = function () {
+        $scope.loadDocuments();
+        $scope.loadHistogram();
+        $scope.loadFacets();
+        $scope.loadClouds();
+    };
+    
+    $scope.loadCases = function () {
         var store = JSON.parse(localStorage.getItem("TextExplorer"));
         if (!store) {
             store = [];
@@ -194,117 +251,162 @@ Tex.controller('texCtrl', function ($scope, es, $sce) {
         $scope.cases = store;
     };
     
-    $scope.$watch(function () { return $scope.cases; }, function () {$scope.saveStorage(); }, true);
-    $scope.saveStorage = function () {
-        localStorage.setItem("TextExplorer", JSON.stringify($scope.cases));
-    };
-    
-    $scope.addFacetFilter = function (d, facet) {
-        var field = $scope.facets.filter(function (fc) {return fc.title === facet.facet; })[0].field,
-            f = {facet: facet.facet, field: field, value: d.key};
-        $scope.facetFilter.push(f);
-        $scope.doSearch();
-    };
-    
-    $scope.removeFilter = function (f, idx) {
-        $scope.facetFilter.splice(idx, 1);
-        $scope.doSearch();
-    };
-    
-    $scope.selectDocument = function (doc) {
-        var search = doc.search || $scope.state.search;
-        es.getDocument(doc.id, search).then(function (docRes) {
-            docRes.saved = doc.search ? true : false;
-            $scope.state.selectedDocument = docRes;
-        });
-    };
-    
-    $scope.appendWord = function (word) {
-        if ($scope.state.search && $scope.state.search.length > 0) {
-            if ($scope.state.search.indexOf(" ") > 0) {
-                $scope.state.search = "(" + $scope.state.search + ")";
-            }
-            $scope.state.search += " AND " + word;
-        } else {
-            $scope.state.search = word;
+    $scope.$watch(function () { return $scope.cases; }, function () {$scope.saveCases(); }, true);
+    $scope.saveCases = function () {
+        if ($scope.cases) {
+            localStorage.setItem("TextExplorer", JSON.stringify($scope.cases));
         }
-        $scope.doSearch();
     };
     
-    /*DB Acitions -------------------------*/
-    $scope.doSearch = function () {
-        $scope.stateToUrl();
-    };
     
-    $scope.loadData = function () {
-        $scope.getDocuments().then(function () {
-            $scope.getFacets();
-            $scope.getTerms();
-            $scope.getBigrams();
-        });
-    };
-    
-    $scope.loadMore = function () {
-        $scope.getDocuments($scope.data.docs.length);
-    };
-    
-    $scope.addCase = function () {
-        var name;
-        do {
-            name = prompt("Type a name for the case");
-        } while (!name || name.length === 0);
-        $scope.cases.push({name: name, states: [], documents: []});
-        $scope.selectedCase = $scope.cases[$scope.cases.length - 1];
-    };
-    
-    $scope.removeCase = function (idx) {
-        $scope.cases.splice(idx, 1);
-    };
-    
-    $scope.getDocuments = function (existent) {
-        $scope.loadingDocuments = true;
-        return es.getDocuments($scope.state.search, $scope.facetFilter, existent).then(function (docs) {
-            if (existent > 0) {
-                $scope.data.docs = $scope.data.docs.concat(docs.docs);
+    /* DB -----------------------------------------*/
+    $scope.loadDocuments = function (from) {
+        from = from || 0;
+        $scope.loading.documents += 1;
+        es.getDocuments($scope.filter, from).then(function (result) {
+            if (from > 0) {
+                
+                $scope.data.documents = $scope.data.documents.concat(result.docs);
             } else {
-                $scope.data.docs = docs.docs;
+                $scope.data.documents = result.docs;
             }
-            $scope.data.total = docs.total;
-            $scope.loadingDocuments -= 1;
+            $scope.data.total = result.total;
+            $scope.data.suggestions = result.suggestions;
+            $scope.loading.documents -= 1;
         });
     };
     
-    
-    
-    $scope.getFacets = function () {
-        $scope.loadingFacets += 1;
-        es.getFacets($scope.state.search, $scope.facets, $scope.facetFilter).then(function (result) {
-            $scope.data.facets = result;
-            $scope.loadingFacets -= 1;
+    $scope.loadHistogram = function () {
+        es.getHistogram($scope.filters()).then(function (result) {
+            $scope.data.histogram = result;
         });
+    };
+    
+    $scope.loadFacets = function () {
+        $scope.loading.facets += 1;
+        es.getFacets($scope.filters(), $scope.facets, $scope.config).then(function (result) {
+            $scope.data.facets = result;
+            $scope.loading.facets -= 1;
+        });
+    };
+    
+    $scope.loadClouds = function () {
+        $scope.getTerms();
+        $scope.getBigrams();
     };
     
     $scope.getTerms = function () {
-        var hasSearch = true;
-        if ($scope.state.search.length === 0 && $scope.facetFilter.length === 0) {
-            return;
-        }
-        $scope.loadingTerms += 1;
-        es.getTerms($scope.state.search, $scope.facetFilter).then(function (result) {
+        $scope.loading.terms += 1;
+        es.getTerms($scope.filters()).then(function (result) {
             $scope.data.terms = result;
-            $scope.loadingTerms -= 1;
+            $scope.loading.terms -= 1;
         });
     };
     
     $scope.getBigrams = function () {
-        if ($scope.state.search.length === 0 && $scope.facetFilter.length === 0) {
-            return;
-        }
-        $scope.loadingBigrams += 1;
-        es.getBigrams($scope.state.search, $scope.facetFilter).then(function (result) {
+        $scope.loading.bigrams += 1;
+        es.getTerms($scope.filters(), "bigrams").then(function (result) {
+            console.log(result);
             $scope.data.bigrams = result;
-            $scope.loadingBigrams -= 1;
+            $scope.loading.bigrams -= 1;
         });
+    };
+    
+    /* Functions ----------------------------------*/
+    $scope.readUrl = function () {
+        var attrs = decodeURIComponent(location.hash.substring(1)).split("&");
+        
+        $scope.filter = {};
+        $scope.filter.sortDocuments = "relevance";
+        attrs.forEach(function (attr) {
+            var dateFrom, dateTo,
+                key = attr.split("=")[0],
+                value = attr.split("=")[1];
+                
+            switch (key) {
+            case "search":
+                $scope.filter.search = value.trim();
+                break;
+            case "date":
+                dateFrom = value.split("TO")[0].trim();
+                dateTo = value.split("TO")[1].trim();
+                $scope.filter.date = {
+                    from: {desc: dateFrom, stamp: moment.utc(dateFrom, "MMM YYYY").unix() * 1000},
+                    to: {desc: dateTo, stamp: moment.utc(dateTo, "MMM YYYY").add(1, "M").unix() * 1000}
+                };
+                break;
+            case "filters":
+                $scope.filter.filters = [];
+                value = value.replace("[", "").replace("]", "");
+                value.split(";").forEach(function (filter) {
+                    var key = filter.split(":")[0].trim(),
+                        value = filter.split(":")[1].trim(),
+                        f = {};
+                    f.facet = key;
+                    f.value = value.split(",").map(function (v) { return v.trim(); });
+                    
+                    f.det = $scope.facets.find(function (fc) { return fc.title === f.facet; });
+                    
+                    $scope.filter.filters.push(f);
+                });
+                break;
+            case "sort":
+                $scope.filter.sortDocuments = value.trim();
+                break;
+            }
+        });
+        //Defaults
+        $scope.filter.date = $scope.filter.date || {
+            from: {desc: moment.utc(es.stats.dateMin.value).format("MMM YYYY"), stamp: es.stats.dateMin.value},
+            to: {desc: moment.utc(es.stats.dateMax.value).format("MMM YYYY"), stamp: es.stats.dateMax.value},
+            maxExtent: true
+        };
+        $scope.loadData();
+    };
+    
+    $scope.setUrl = function () {
+        var url = [], facets;
+        
+        if (es.hasSearch($scope.filter)) {
+            url.push("search=" + $scope.filter.search);
+        }
+        if (es.filterDate($scope.filter)) {
+            url.push("date=" + $scope.filter.date.from.desc + " TO " + $scope.filter.date.to.desc);
+        }
+        if (es.hasFacets($scope.filter)) {
+            
+            facets = $scope.filter.filters.map(function (f) {
+                return f.facet + ":" + f.value.join(",");
+            });
+            url.push("filters=[" + facets.filter(Utils.onlyUnique).join(";") + "]");
+            
+        }
+        window.location.hash = url.length > 0 ? "#" + url.join("&") : "";
+    };
+    
+    /*Utils ---------------------------------------*/
+    function message(text, code) {
+        if (code === 401) {
+            document.getElementById("initialSplash").innerHTML = text;
+        }
+    }
+    
+    /*Init --------------------------------------*/
+    $scope.init = function () {
+        es.params({
+            host: "vgc.poly.edu/projects/opsense",
+            index: "yelp"
+        });
+        
+        if (sessionStorage.getItem("user")) {
+            $scope.security.user = sessionStorage.getItem("user");
+            $scope.security.password = sessionStorage.getItem("password");
+            $scope.login();
+        }
+        $scope.config = {};
+        $scope.config.minCount = 1;
+        window.addEventListener("hashchange", $scope.readUrl, false);
+        $scope.toolTip = d3.select(document.getElementById("toolTip"));
     };
     
 });
@@ -345,12 +447,14 @@ Tex.directive("fileread", [function () {
         },
         link: function (scope, element, attributes) {
             element.bind("change", function (changeEvent) {
+                
                 var reader = new FileReader();
                 reader.onload = function (loadEvent) {
+                    
                     scope.$apply(function () {
                         try {
                             var newCases = JSON.parse(loadEvent.target.result);
-                            scope.$parent.loadCases(newCases);
+                            scope.$parent.loadCasesFromFile(newCases);
                         } catch (err) {
                             alert('Error loading the file');
                         }

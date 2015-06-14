@@ -2,6 +2,7 @@
 body {
   margin: 0px;
   font-family: 'Roboto', sans-serif;
+  font-size: 14px;
   background-color: #f7f7f7;
 }
 body ul {
@@ -46,7 +47,7 @@ body em {
   margin-top: 4px;
 }
 #SearchBar input[type=search] {
-  width: 500px;
+  width: 400px;
   height: 30px;
   border: none;
   border-bottom: solid 1px #ff5722;
@@ -124,11 +125,51 @@ body em {
   text-align: left;
   line-height: 17px;
 }
+#Summary .sort {
+  position: absolute;
+  right: 20px;
+  top: 10px;
+}
 #Summary .histogram {
   width: 800px;
   height: 30px;
   display: inline-block;
   border: solid 1px #ccc;
+}
+#Summary .histogram line {
+  stroke: #e3e4e5;
+  stroke-width: 1;
+}
+#Summary .histogram text {
+  font-size: 9px;
+}
+#Summary .histogram .extent {
+  fill: #607d8b;
+  fill-opacity: 0.1;
+  height: 9px;
+  y: 21px;
+}
+#Summary .histogram .resize {
+  visibility: visible;
+}
+#Summary .histogram .controls {
+  display: block;
+  float: left;
+  width: 5px;
+  font-size: 11px;
+  margin-bottom: 2px;
+  text-align: center;
+  width: 20px;
+  background-color: #eceff1;
+}
+#Summary .histogram .controls span {
+  cursor: pointer;
+  text-align: center;
+  display: block;
+}
+#Summary .histogram .controls .selected {
+  background-color: #607d8b;
+  color: white;
 }
 #Data {
   position: fixed;
@@ -154,11 +195,14 @@ body em {
   position: absolute;
   left: 300px;
   right: 300px;
-  top: 5px;
+  top: 10px;
   bottom: 0px;
   padding-top: 8px;
   overflow-x: auto;
   padding: 5px;
+}
+#DocumentsList a {
+  color: #607d8b;
 }
 #DocumentsList .loadmore {
   color: #607d8b;
@@ -177,7 +221,7 @@ body em {
   padding-top: 5px;
 }
 .document {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 300;
   padding: 5px;
   padding-bottom: 20px;
@@ -200,6 +244,20 @@ body em {
   font-size: 12px;
   text-align: right;
 }
+.legend {
+  height: 20px !important;
+  font-size: 11px;
+}
+.legend div {
+  display: inline-block;
+  width: 35px;
+  text-align: center;
+  color: white;
+}
+.legend label {
+  width: 60px;
+  display: inline-block;
+}
 .facet {
   min-height: 100px;
   margin: 15px;
@@ -214,6 +272,20 @@ body em {
   margin: 0px;
   border-bottom: solid 1px #e3e4e5;
 }
+.suggestions {
+  min-height: 10px;
+}
+.suggestions h3 {
+  margin: 0px;
+}
+.suggestions .title {
+  font-weight: bold;
+}
+.suggestions .opt {
+  color: #607d8b;
+  text-decoration: underline;
+  cursor: pointer;
+}
 .facet-provider table {
   margin-top: -5px;
   table-layout: fixed;
@@ -226,6 +298,8 @@ body em {
 }
 .facet-provider th {
   padding-top: 5px;
+  cursor: pointer;
+  font-size: 11px;
 }
 .facet-provider .label {
   text-align: left;
@@ -257,6 +331,17 @@ body em {
   font-size: 12px;
   padding-left: 5px;
 }
+.facet-provider .maxFacet {
+  position: absolute;
+}
+.facet-provider .maxFacet div {
+  display: inline-block;
+  width: 15px;
+  height: 15px;
+  margin-left: 15px;
+  margin-right: 5px;
+  vertical-align: middle;
+}
 .facet-rating table {
   margin-top: -5px;
 }
@@ -267,7 +352,7 @@ body em {
   text-align: right;
 }
 .facet-rating .bar {
-  width: 80px;
+  width: 75px;
 }
 .facet-rating .barBase {
   height: 9px;
@@ -278,6 +363,9 @@ body em {
   height: 9px;
   background-color: #607d8b;
   margin-top: -9px;
+}
+.facet-rating .value {
+  padding-left: 5px;
 }
 .facet-rating .footer td {
   font-size: 9px;
@@ -493,6 +581,39 @@ body em {
   box-shadow: 0px 0px 10px #ccc;
   width: 280px;
 }
+#configView {
+  position: fixed;
+  left: 638px;
+  top: 5px;
+  z-index: 100;
+}
+#configView button {
+  height: 30px;
+  background-color: #607d8b;
+  color: white;
+  width: 30px;
+  outline: none;
+  display: inline-block;
+  border: none;
+}
+#configView .panel {
+  background-color: white;
+  padding: 5px;
+  font-size: 14px;
+  display: none;
+  box-shadow: 0px 5px 10px #ccc;
+  background-color: #eceff1;
+  opacity: 0.95;
+}
+#configView .panel label {
+  margin-right: 5px;
+}
+#configView:hover .panel {
+  display: block;
+}
+#configView:hover button {
+  background-color: #ff5722;
+}
 .loading {
   position: absolute;
   bottom: 0px;
@@ -506,4 +627,19 @@ body em {
   text-align: center;
   padding-top: 50px;
   font-size: 16px;
+}
+#toolTip {
+  position: fixed;
+  display: none;
+  background: #eceff1;
+  border: solid 1px #ccc;
+  box-shadow: 0px 5px 10px #ccc;
+  z-index: 500;
+  opacity: 0.95;
+  font-size: 12px;
+  padding: 5px;
+  color: #607d8b;
+}
+#toolTip .bold {
+  font-weight: 500;
 }

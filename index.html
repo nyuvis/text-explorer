@@ -16,6 +16,7 @@
     <script src="vendors/d3.min.js"></script>
     <script src="http://d3js.org/topojson.v1.min.js"></script>
     <script src="vendors/d3.layout.cloud.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.10.3/moment.min.js"></script>
     <script src="js/states.js"></script>
     <script src="js/utils.js"></script>
     <script src="js/es.js"></script>
@@ -23,20 +24,22 @@
     <script src="js/facets.js"></script>
 </head>
 <body ng-controller="texCtrl" ng-init="init()">
-   <div class="loading" ng-hide="done" style="display:block; z-index: 1000; opacity:1">
-        
+   <div class="loading" ng-hide="logged" id="initialSplash" style="display:block; z-index: 1000; opacity:1">
+      <img src="images/logo.png">{{logged}} <br><br>
+       Password: <input type="password" ng-model="security.password" ng-enter="login()"> <button ng-click="login()">Load</button> <br>
+       <span style="color:red">{{security.status}}</span>
     </div>
     <input type="file" id="uploadBox" style="display:none" fileread="vm.uploadme"/>
     <div id="SearchBar">
        <ul>
            <li><img src="images/logo.png" /></li>
-           <li><input ng-enter="doSearch()" type="search" placeholder="Search" ng-model="state.search" /></li>
-           <li><button ng-click="doSearch()" style="cursor: pointer; font-size:16px"><i class="fa fa-search"></i></button></li>
+           <li><input ng-enter="setUrl(); changeSearch()" type="search" placeholder="Search" ng-model="filter.search" /></li>
+           <li><button ng-click="setUrl(); changeSearch()" style="cursor: pointer; font-size:16px"><i class="fa fa-search"></i></button></li>
            <li>
                <button ng-click="saveState()" style="cursor: pointer; font-size:16px"><i class="fa fa-floppy-o"></i></button>
            </li>
-           <li style="padding-top: 4px; padding-left: 10px;">
-              <span ng-repeat="f in facetFilter" class="filter"><i style="padding-left: 6px" class="fa fa-chevron-right"></i> {{f.facet}}:{{f.value}} <div ng-click="removeFilter(f, $index)">Remove</div> </span> 
+           <li style="margin-left: 20px; padding-top: 4px; padding-left: 10px;">
+              <span ng-repeat="f in filter.filters" class="filter"><i style="padding-left: 6px" class="fa fa-chevron-right"></i> {{f.facet}}:{{f.value.join(",")}} <div ng-click="removeFilter(f, $index)">Remove</div> </span> 
            </li>
            
        </ul>     
@@ -44,31 +47,73 @@
     <div id="Summary">
         <div class="stats">
             <h2>Hits: {{data.total}}</h2><br />
-            <label></label>
+            <label>{{filter.date.from.desc}} to {{filter.date.to.desc}}</label>
         </div>
         <div class="histogram">  
-            <histogram></histogram>
+            <div histogram data="data.histogram" filter="filter" loading="loading.histogram"></div>
+        </div>
+        <div class="sort">
+            <label>Sort documents</label>
+            <select ng-model="filter.sortDocuments" ng-change="changeSort()">
+                <option value="relevance">Relevance</option>
+                <option value="date">Date</option>
+                <option value="date-desc">Date (Desc)</option>
+                <option value="stars">Stars</option>
+                <option value="stars-desc">Stars (Desc)</option>
+            </select>
         </div>
         </ul>
     </div>
     <div id="Data">
-        <div id="Facets">
-            <div class="facet facet-{{facet.directive}}" facet data="facet" loading="loadingFacets" ng-repeat="facet in data.facets | orderBy: 'order'"></div>
+        <div id="Facets" >
+           <div class="facet" style="min-height: 10px">
+               <div class="legend">
+                  <label>Count(#)</label>
+                    <div style="background-color:hsl(200, 20%, 80%)">&lt; 5</div>
+                    <div style="background-color:hsl(200, 40%, 70%)">&gt; 5</div>
+                    <div style="background-color:hsl(200, 60%, 60%)">&gt; 50</div>
+                    <div style="background-color:hsl(200, 80%, 50%)">&gt; 500</div>
+                    <div style="background-color:hsl(200, 100%, 40%)">&gt; 5K</div>
+               </div>
+               <div class="legend">
+                  <label>Percent(%)</label>
+                    <div style="background-color:hsl(200, 20%, 80%)">&lt; 0.1%</div>
+                    <div style="background-color:hsl(200, 40%, 70%)">&gt; 0.1%</div>
+                    <div style="background-color:hsl(200, 60%, 60%)">&gt; 1%</div>
+                    <div style="background-color:hsl(200, 80%, 50%)">&gt; 10%</div>
+                    <div style="background-color:hsl(200, 100%, 40%)">&gt; 50%</div>
+               </div>
+           </div>
+           <div class="facet facet-{{facet.directive}}" facet data="facet" loading="loading.facets" ng-repeat="facet in data.facets | orderBy: 'order'"></div>
         </div>
         <div id="RelatedPhrases" style="overflow:auto">
-            <div class="facet facet-{{facet.directive}}" cloud search="state.search" h="400" data="data.terms.Significant" loading="loadingTerms"></div>
-            <div class="facet facet-{{facet.directive}}" cloud search="state.search" h="200" data="data.bigrams.Bigrams" loading="loadingBigrams"></div>
+            <div class="facet suggestions" ng-show="data.suggestions.length > 0">
+              <h3>Did you mean</h3>
+                <ul>
+                    <li ng-repeat="sugg in data.suggestions">
+                       <span class="title">{{sugg.text}} = </span>
+                        <span ng-click="searchFix(sugg.text, op.text)" ng-repeat="op in sugg.options"><span class="opt">{{op.text}}</span>, </span>
+                    </li>
+                </ul>
+            </div>
+            <div class="facet facet-{{facet.directive}}" cloud search="state.search" total="data.total" h="400" data="data.terms" loading="loading.terms"></div>
+            <div class="facet facet-{{facet.directive}}" cloud search="state.search" total="data.total" h="200" data="data.bigrams" loading="loading.bigrams"></div>
         </div>
         <div id="DocumentsList">
-            <div class="document" ng-repeat="doc in data.docs" ng-click="selectDocument(doc)">
-                <div class="header">
-                    <span class="business">{{doc.business.name}}</span>
-                    <span class="details"> - {{doc.business.category | list}} - {{doc.review.created | date:'MMM dd, yyyy'}}</span>
-                    <span class="stars" ng-bind-html="doc.review.rating | stars"></span>
+           <div class="sortBar" ng-model="sortDocuments">
+               
+           </div>
+           <div class="list">
+                <div class="document" ng-repeat="doc in data.documents" ng-click="selectDocument(doc)">
+                    <div class="header">
+                        <span class="business"><a ng-href="{{doc.review.url}}" target="_blank">{{doc.business.name}}</a></span>
+                        <span class="details"> - {{doc.business.category | list}} - {{doc.review.created | date:'MMM dd, yyyy'}}</span>
+                        <span class="stars" ng-bind-html="doc.review.rating | stars"></span>
+                    </div>
+                    <div class="text" ng-bind-html="HTML(doc.text)"></div>
                 </div>
-                <div class="text" ng-bind-html="HTML(doc.text)"></div>
+                <div class="loadmore" ng-show="data.documents.length < data.total" ng-click="loadMore()">Load More ...</div>
             </div>
-            <div class="loadmore" ng-show="data.docs.length < data.total" ng-click="loadMore()">Load More ...</div>
         </div>
     </div>
      <div id="documentDetailView" ng-show="state.selectedDocument" >
@@ -79,7 +124,7 @@
                <table>
                    <tr><th>Date</th><td>{{state.selectedDocument.review.created | date:short}}</td></tr>
                    <tr><th>Rating</th><td>{{state.selectedDocument.review.rating }}</td></tr>
-                   <tr><th>Url</th><td><a ng-href="{{state.selectedDocument.review.url}}" target="_blank">Link</a></td></tr>
+                   <tr><th>Url</th><td><a ng-href="{{state.selectedDocument.review.url}}" target="_blank" ng-click="$event.stopPropagation()">Link</a></td></tr>
                </table>
                 <h2>Business</h2>
                 <table>
@@ -104,8 +149,18 @@
             </div>
             <div class="text">
                 <span ng-bind-html="HTML(state.selectedDocument.text)"></span> <br>
-                <button ng-click="saveDocument(state.selectedDocument)" style="cursor: pointer; font-size:16px"> <i class="fa fa-floppy-o"> </i>Save Document</button>
+                <button ng-click="saveDocument(state.selectedDocument)" style="cursor: pointer; font-size:16px"> <i class="fa fa-floppy-o"></i> Save Document</button>
             </div>
+        </div>
+    </div>
+    <div id="configView">
+         <div class="toolBar">
+            <button><i class="fa fa-cog"></i></button>
+        </div>
+        <div class="panel">
+            <ul>
+                <li><label>Min. Count</label><input type="number" ng-enter="loadData()" ng-model="config.minCount"></input></li>
+            </ul>
         </div>
     </div>
     <div id="caseView">
@@ -122,7 +177,7 @@
             <ul>
                 <li ng-repeat="state in selectedCase.states track by $index" ng-click="loadState(state)">
                 {{state.desc}}
-                    <div class="detail">{{state.search}}, {{filtersList(state)}}</div>
+                    <div class="detail"> {{filtersList(state)}} </div>
                     <button ng-click="removeState($index); $event.stopPropagation();"><i class="fa fa-trash-o"></i></button>
                 </li>
             </ul>
@@ -144,6 +199,17 @@
             </div>
         </div>
     </div>
-    
+    <div id="toolTip">tool tip</div>
 </body>
+<script>
+      var _gaq = _gaq || [];
+      _gaq.push(['_setAccount', 'UA-61671027-2']);
+      _gaq.push(['_trackPageview']);
+
+      (function() {
+        var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+        ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+        var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+      })();        
+</script>   
 </html>

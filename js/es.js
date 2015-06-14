@@ -11,6 +11,7 @@ ES.factory('es', function (esFactory) {
             self[p] = params[p];
         });
     };
+    
     self.client = function () {
         if (self._client) {
             return self._client;
@@ -32,7 +33,104 @@ ES.factory('es', function (esFactory) {
         return self._client;
     };
     
+    self.stats = {};
+    
+    self.login = function (security) {
+        self.user = security.user;
+        self.password = security.password;
+        self._client = undefined;
+        
+        var query = {
+            "aggs": {
+                "dateMax": {
+                    "max": {
+                        "field": "review.created"
+                    }
+                },
+                "dateMin": {
+                    "min": {
+                        "field": "review.created"
+                    }
+                },
+                "histogram" : {
+                    "date_histogram" : {
+                        "field" : "review.created",
+                        "interval" : "month",
+                        "format" : "MMM yyyy",
+                        "min_doc_count" : 0
+                    }
+                }
+            }
+        };
+        
+        return self.client().search({
+            index: self.index,
+            type: "reviews",
+            size: 0,
+            body: query
+        }).then(function (result) {
+            self.stats = result.aggregations;
+            if (result.status === 401) {
+                return false;
+            } else {
+                return true;
+            }
+        });
+    };
+    
+    /*Filter properties ----------------------*/
+    self.hasFacets = function (filters) { return filters.filters && filters.filters.length > 0 ? true : false; };
+    self.hasSearch =  function (filters) { return filters.search && filters.search.length > 0 ? true : false; };
+    self.hasDate =  function (filters) { return filters.date ? true : false; };
+    self.filterDate =  function (filters) {
+        return self.hasDate(filters) &&
+            (filters.date.from.stamp > self.stats.dateMin.value ||
+            filters.date.to.stamp < self.stats.dateMax.value) ? true : false;
+    };
+    self.onlyDate = function (filters) { return !self.hasFacets(filters) && !self.hasSearch(filters) && self.filterDate(filters); };
+    self.hasId =  function (filters) { return filters.id && filters.id.length > 0 ? true : false; };
+    self.hasFilter =  function (filters) { return self.hasFacets(filters) || self.filterDate(filters) || self.hasSearch(filters); };
+    
     /*Queries Parts -------------------------*/
+    self.query = function (filters) {
+        var q = [], facets;
+        if (self.hasSearch(filters)) {
+            filters.search = filters.search
+                .toLowerCase()
+                .replace(" and ", " AND ")
+                .replace(" or ", " OR ");
+            
+            q.push("review.text:(" + filters.search + ")");
+        }
+
+        if (self.hasFacets(filters)) {
+            facets = filters.filters.map(function (f) {
+                return "(" + f.value.map(function (v) {
+                    return f.det.field + ":" + v;
+                }).join(" OR ") + ")";
+            }).join(" AND ");
+            q.push(facets);
+        }
+        
+        if (self.hasId(filters)) {
+            q.push("_id:" + filters.id);
+        }
+        
+        if (self.filterDate(filters)) {
+            q.push("review.created:[" + filters.date.from.stamp + " TO " + filters.date.to.stamp + "]");
+        }
+        
+        if (q.length === 0) {
+            return {"match_all": {}};
+        }
+        
+        return {
+            "query_string": {
+                "query": q.join(" AND ")
+            }
+        };
+    };
+    
     self.highlight = function () {
         return {
             "fields": {
@@ -45,41 +143,14 @@ ES.factory('es', function (esFactory) {
         };
     };
     
-    self.query = function (search, facets, id) {
-        search = search || "";
-        var q = [];
-        if (search.length > 0) {
-            q.push("review.text:(" + search + ")");
-        }
-        
-        if (facets.length > 0) {
-            q.push("(" + facets.map(function (f) {return f.field + ":" + '"' + f.value + '"'; }).join(" AND ") + ")");
-        }
-        
-        if (id) {
-            q.push("_id:" + id);
-        }
-        
-        if (q.length === 0) {
-            return {"match_all": {}};
-        } else {
-            search = q.join(" AND ");
-        }
-        
-        return {
-            "query_string": {
-                "query": search
-            }
-        };
-    };
-    
-    self.agg = function (field, significant) {
+    self.agg = function (field, significant, minCount) {
+        minCount = minCount || 1;
         if (significant) {
             return {
                 "significant_terms": {
                     "field": field,
                     "size": 500,
-                    "min_doc_count": 1,
+                    "min_doc_count": minCount,
                     "script_heuristic": {
                         "script": "_subset_freq"
                     }
@@ -89,19 +160,108 @@ ES.factory('es', function (esFactory) {
             return {
                 "terms": {
                     "field": field,
-                    "size": 500
+                    "size": 500,
+                    "min_doc_count": minCount
                 }
             };
         }
         
     };
+   
+    self.sort = function (filter) {
+        var field, mode, r = {};
+        switch (filter.sortDocuments) {
+        case "relevance":
+            return undefined;
+        case "date":
+            field = "review.created";
+            mode = "asc";
+            break;
+        case "date-desc":
+            field = "review.created";
+            mode = "desc";
+            break;
+        case "stars":
+            field = "review.rating";
+            mode = "asc";
+            break;
+        case "stars-desc":
+            field = "review.rating";
+            mode = "desc";
+            break;
+        }
+        r[field] = {"order" : mode};
+        return [r];
+    };
     
-    self.getDocument = function (id, search, fragSize) {
+    self.suggest = function (filter) {
+        if (!self.hasSearch(filter)) {
+            return undefined;
+        }
+        return {
+            "suggestions" : {
+                "text" : filter.search,
+                "term" : {
+                    "field" : "review.text",
+                    "suggest_mode":"popular"
+                },
+                
+            }
+        };
+    };
+    /*Requests ---------------------*/
+    self.getDocuments = function (filters, from) {
+        var query = {
+            query: self.query(filters),
+            sort: self.sort(filters),
+            highlight: self.highlight(),
+            suggest: self.suggest(filters)
+        };
+        
+        return self.client().search({
+            index: self.index,
+            type: "reviews",
+            size: size,
+            from: from,
+            body: query
+        }).then(function (result) {
+            var suggestions = [],
+                docs = result.hits.hits,
+                total = result.hits.total;
+            docs = docs.map(function (d) {
+                var newD = d._source;
+                if (!d.highlight) {
+                    newD.text = newD.review.text;
+                } else {
+                    newD.text = d.highlight["review.text"][0];
+                }
+                newD.t1 = newD.text[newD.text.length - 1];
+                newD.t2 = newD.review.text[newD.review.text.length - 1];
+                newD.id = d._id;
+                if (newD.text[newD.text.length - 1] !== newD.review.text[newD.review.text.length - 1]) {
+                    newD.text = newD.text + "...";
+                }
+                
+                return newD;
+            });
+            
+            if (result.suggest) {
+                suggestions = result.suggest.suggestions.map(function (s) {
+                    s.options = s.options.filter(function (o) { return o.freq > 10; });
+                    return s;
+                }).filter(function (s) {return s.options.length > 0; });
+            }
+            console.log(result);
+            return {docs: docs, total: total, suggestions: suggestions};
+        });
+    };
+    
+    self.getDocument = function (filters, fragSize) {
         var numFrags = fragSize ? 3 : 0,
             noMatch = fragSize ? 50 : 1000000,
             
             query = {
-                query: self.query(search, [], id),
+                query: self.query(filters),
                 highlight: {
                     "fields": {
                         "review.text": {
@@ -136,54 +296,57 @@ ES.factory('es', function (esFactory) {
         });
     };
     
-    /*Requests ---------------------------*/
-    self.getDocuments = function (search, facets, existent) {
+    self.getHistogram = function (filters) {
+        filters.date = false;
         var query = {
-            query: self.query(search, facets),
-            highlight: self.highlight()
-        },
-            from = 0;
-        if (existent > 0) {
-            from = existent;
-        }
+            query: self.query(filters),
+            aggs: {
+                "histogram" : {
+                    "date_histogram" : {
+                        "field" : "review.created",
+                        "interval" : "month",
+                        "format" : "MMM yyyy",
+                        "min_doc_count" : 0,
+                        "extended_bounds": {
+                            "min": self.stats.dateMin.value,
+                            "max": self.stats.dateMax.value
+                        }
+                    }
+                }
+            }
+        };
         
         return self.client().search({
             index: self.index,
             type: "reviews",
-            size: size,
-            from: from,
+            size: 0,
             body: query
         }).then(function (result) {
-            var docs = result.hits.hits,
-                total = result.hits.total;
-            docs = docs.map(function (d) {
-                var newD = d._source;
-                newD.text = d.highlight["review.text"][0];
-                newD.t1 = newD.text[newD.text.length - 1];
-                newD.t2 = newD.review.text[newD.review.text.length - 1];
-                newD.id = d._id;
-                if (newD.text[newD.text.length - 1] !== newD.review.text[newD.review.text.length - 1]) {
-                    newD.text = newD.text + "...";
+            result.aggregations.histogram.buckets.forEach(function (d) {
+                if (!self.hasFilter(filters)) {
+                    d.isGlobal = true;
+                } else {
+                    d.globalValue = self.stats.histogram.buckets.find(function (g) { return g.key === d.key; }).doc_count;
+                    d.percent = d.doc_count / d.globalValue;
                 }
-                
-                return newD;
             });
-            return {docs: docs, total: total};
+            return result.aggregations.histogram.buckets;
         });
+        
     };
     
-    self.getFacets = function (search, facets, filter) {
+    self.getFacets = function (filters, facets, config) {
         var query = {
-                query: self.query(search, filter),
+                query: self.query(filters),
                 aggs: {}
             },
             significant = false;
         
-        if (query.query.query_string) {
+        if (self.hasFilter(filters)) {
             significant = true;
         }
         facets.forEach(function (f) {
-            query.aggs[f.title] = self.agg(f.field, significant);
+            query.aggs[f.title] = self.agg(f.field, significant, config.minCount);
         });
         
         return self.client().search({
@@ -214,72 +377,48 @@ ES.factory('es', function (esFactory) {
             });
             return facs;
         });
-                
-        
     };
     
-    self.getTerms = function (search, facets) {
-        
-        var query = {
-            query: self.query(search, facets),
-            aggs: {}
-        },
+    self.getTerms = function (filters, type) {
+        var size = 50, field = "review.text",
             re = /(\w+)/g,
+            exclude = self.hasSearch(filters) ? myStop.concat(filters.search.match(re)) : myStop,
+            query = {
+                query: self.query(filters),
+                aggs: {}
+            };
             
-            exclude = search ? myStop.concat(search.match(re)) : myStop;
-        
-        query.aggs =  {
-            "Terms": {
-                "terms": {
-                    "field": "review.text",
-                    "size": 50,
-                    "exclude": exclude.join("|")
-                }
-            },
-            "Significant": {
-                "significant_terms": {
-                    "field": "review.text",
-                    "size": 50,
-                    "exclude": exclude.join("|")
-                }
-            }
-        };
-
-        if (query.query.query_string.query === "*") {
-            query.aggs.Significant = query.aggs.Terms;
+        exclude.join("|");
+            
+        if (type === 'bigrams') {
+            size = 20;
+            field = 'review.text.bigrams';
+            //exclude = myStop.map(function (w) { return w + " .*|.* " + w; }).join("|") + "|.* _|_ .*";
+            exclude = "|.* _|_ .*";
+            
         }
-        query.aggs.Terms = undefined;
-        return self.client().search({
-            index: self.index,
-            type: "reviews",
-            size: 0,
-            body: query
-        }).then(function (result) {
-            var r = {
-                Significant: result.aggregations.Significant ? { max: d3.max(result.aggregations.Significant.buckets, function (d) {return d.doc_count; }), data: result.aggregations.Significant.buckets} : []
-            };
-            return r;
-        });
-    };
-    
-    self.getBigrams = function (search, facets) {
-        var query = {
-            query: self.query(search, facets),
-            aggs: {}
-        },
-            re = /(\w+)/g,
-            
-            exclude = search ? myStop.concat(search.match(re)) : myStop;
         
-        query.aggs =  {
-            "Bigrams": {
-                "significant_terms": {
-                    "field": "review.text.bigrams",
-                    "size": 20,
-                    "exclude": ".*_.*"
+        if (self.hasFilter(filters)) {
+            query.aggs =  {
+                "Terms": {
+                    "significant_terms": {
+                        "field": field,
+                        "size": size,
+                        "exclude": exclude
+                    }
                 }
-            }
-        };
+            };
+        } else {
+            query.aggs =  {
+                "Terms": {
+                    "terms": {
+                        "field": field,
+                        "size": size,
+                        "exclude": exclude
+                    }
+                }
+            };
+        }
 
         return self.client().search({
             index: self.index,
@@ -287,12 +426,11 @@ ES.factory('es', function (esFactory) {
             size: 0,
             body: query
         }).then(function (result) {
-            var r = {
-                Bigrams: { max: d3.max(result.aggregations.Bigrams.buckets, function (d) {return d.doc_count; }), data: result.aggregations.Bigrams.buckets}
-            };
-            return r;
+            return { max: d3.max(result.aggregations.Terms.buckets, function (d) {return d.doc_count; }), data: result.aggregations.Terms.buckets};
         });
     };
+    
+    
     
     return self;
 });

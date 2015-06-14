@@ -27,9 +27,12 @@ var Utils = {
             }
             return 0;
         };
+    },
+    onlyUnique: function (value, index, self) {
+        'use strict';
+        return self.indexOf(value) === index;
     }
 };
-
 
 (function () {
     'use strict';
