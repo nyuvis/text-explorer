@@ -585,7 +585,7 @@ body em {
   position: fixed;
   left: 638px;
   top: 5px;
-  z-index: 100;
+  z-index: 200;
 }
 #configView button {
   height: 30px;
