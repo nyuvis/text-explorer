@@ -161,6 +161,35 @@
             <ul>
                 <li><label>Min. Count</label><input type="number" ng-enter="loadData()" ng-model="config.minCount"></input></li>
             </ul>
+            <hr />
+            <div class="help">
+                <h3>Search Query</h3>
+                <h4>Boolean operators</h4>
+                Operators are: 
+                   <ul>
+                       <li><em>+</em> (this term must be present)</li>
+                        <li><em>-</em>  (this term must not be present).</li>
+                </ul>  
+                All other terms are optional. For example, this query:
+                <em>quick brown +fox -news</em>
+                <ul>
+                    <li><em>fox</em> must be present</li>
+                    <li><em>news</em> must not be present</li>
+                    <li><em>quick and brown</em> are optional — their presence increases the relevance</li>
+                </ul>
+                The familiar operators <em>AND</em>, <em>OR</em> and <em>NOT</em> are also supported
+                <h4>Proximity searches</h4>
+                <span>While a phrase query (eg "john smith") expects all of the terms in exactly the same order, 
+                a proximity query allows the specified words to be further apart or in a different order with a number specifying the maximum distance between them: "fox quick"~5</span>
+                <h4>Fuzziness</h4>
+                <span>We can search for terms that are similar to, but not exactly like our search terms, using the “fuzzy” operator: quikc~ brwn~ foks~</span>
+                <h4>Wildcards</h4>
+                <span>Wildcard searches can be run on individual terms, using <em>?</em> to replace a single character, and <em>*</em> to replace zero or more characters: qu?ck bro*</span>
+                <h4>Regular Expressions</h4>
+                <span>Regular expression patterns can be embedded in the query string by wrapping them in forward-slashes <em>("/")</em>:/joh?n(ath[oa]n)/ </span>
+                <h4>Boosting</h4>
+                <span>Use the boost operator <em>^</em> to make one term more relevant than another, For instance, if we want to find all documents about foxes, but we are especially interested in quick foxes: quick^2 fox, </span>
+            </div>
         </div>
     </div>
     <div id="caseView">

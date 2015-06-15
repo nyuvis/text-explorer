@@ -125,7 +125,7 @@ Tex.controller('texCtrl', function ($scope, es, $sce) {
             if ($scope.filter.search.indexOf(" ") > 0) {
                 $scope.filter.search = "(" + $scope.filter.search + ")";
             }
-            $scope.filter.search += " AND " + word;
+            $scope.filter.search = "+" + $scope.filter.search + " +" + word;
         } else {
             $scope.filter.search = word;
         }

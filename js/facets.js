@@ -370,7 +370,7 @@ Tex.directive("histogram", function () {
                     if (x.range()[i] > start && idxStart < 0) {
                         idxStart = i === 0 ? 0 : i - 1;
                     }
-                    if (x.range()[i] > end && idxEnd < 0) {
+                    if (x.range()[i] >= end && idxEnd < 0) {
                         idxEnd = i - 1;
                     }
                 }

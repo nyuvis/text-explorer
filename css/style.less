@@ -202,7 +202,7 @@ body{
     margin: auto;
     box-shadow: 0px 0px 5px #ccc;
 }
-@FacetsWidth: 300px;
+@FacetsWidth: 310px;
 #Facets{
     position: absolute;
     left: 0px;
@@ -658,13 +658,40 @@ body{
         padding: 5px;
         font-size: 14px;
         display: none;
-        box-shadow: 0px 5px 10px #ccc;
-        background-color: @Light;
+        box-shadow: 0px 5px 20px #989898;
+        background-color: White;
         opacity: 0.95;
+        max-width: 600px;
+        max-height: 600px;
+        overflow: auto;
         label {
             margin-right: 5px;
         }
     }
+    h4{
+        margin-bottom: 0px;
+        border-bottom: solid 1px @Divider;
+    }
+    h3{
+        font-size: 16px;
+        margin-bottom: 0px;
+    }
+    hr{
+        border: solid 1px @Divider;
+    }
+    .help{
+        ul{
+            list-style: disc;
+            padding-left: 0px;
+            margin-left: 20px;
+        }
+        em{
+            background-color: @Light;
+            padding: 0px 5px 0px 2px; 
+            font-weight: normal;
+        }
+    }
+
 }
 
 #configView:hover{

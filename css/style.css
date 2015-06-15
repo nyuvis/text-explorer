@@ -187,14 +187,14 @@ body em {
   left: 0px;
   top: 0px;
   bottom: 0px;
-  width: 300px;
+  width: 310px;
   padding-top: 5px;
   overflow-x: auto;
 }
 #DocumentsList {
   position: absolute;
-  left: 300px;
-  right: 300px;
+  left: 310px;
+  right: 310px;
   top: 10px;
   bottom: 0px;
   padding-top: 8px;
@@ -217,7 +217,7 @@ body em {
   right: 0px;
   top: 0px;
   bottom: 0px;
-  width: 300px;
+  width: 310px;
   padding-top: 5px;
 }
 .document {
@@ -601,12 +601,36 @@ body em {
   padding: 5px;
   font-size: 14px;
   display: none;
-  box-shadow: 0px 5px 10px #ccc;
-  background-color: #eceff1;
+  box-shadow: 0px 5px 20px #989898;
+  background-color: White;
   opacity: 0.95;
+  max-width: 600px;
+  max-height: 600px;
+  overflow: auto;
 }
 #configView .panel label {
   margin-right: 5px;
+}
+#configView h4 {
+  margin-bottom: 0px;
+  border-bottom: solid 1px #e3e4e5;
+}
+#configView h3 {
+  font-size: 16px;
+  margin-bottom: 0px;
+}
+#configView hr {
+  border: solid 1px #e3e4e5;
+}
+#configView .help ul {
+  list-style: disc;
+  padding-left: 0px;
+  margin-left: 20px;
+}
+#configView .help em {
+  background-color: #eceff1;
+  padding: 0px 5px 0px 2px;
+  font-weight: normal;
 }
 #configView:hover .panel {
   display: block;
