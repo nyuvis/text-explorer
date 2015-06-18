@@ -106,7 +106,7 @@ ES.factory('es', function (esFactory) {
         if (self.hasFacets(filters)) {
             facets = filters.filters.map(function (f) {
                 return "(" + f.value.map(function (v) {
-                    return f.det.field + ":" + v;
+                    return f.det.field + ":\"" + v + "\"";
                 }).join(" OR ") + ")";
             }).join(" AND ");
             q.push(facets);
@@ -203,8 +203,8 @@ ES.factory('es', function (esFactory) {
                 "text" : filter.search,
                 "term" : {
                     "field" : "review.text",
-                    "suggest_mode":"popular"
-                },
+                    "suggest_mode": "popular"
+                }
                 
             }
         };

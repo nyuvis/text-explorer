@@ -16,6 +16,7 @@
     <script src="vendors/d3.min.js"></script>
     <script src="http://d3js.org/topojson.v1.min.js"></script>
     <script src="vendors/d3.layout.cloud.js"></script>
+    <script src="vendors/papaparse.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.10.3/moment.min.js"></script>
     <script src="js/states.js"></script>
     <script src="js/utils.js"></script>
@@ -39,6 +40,7 @@
                <button ng-click="saveState()" style="cursor: pointer; font-size:16px"><i class="fa fa-floppy-o"></i></button>
            </li>
            <li style="margin-left: 20px; padding-top: 4px; padding-left: 10px;">
+             <span ng-if="config.minCount > 1" class="filter"><i style="padding-left: 6px" class="fa fa-chevron-right"></i> Min:{{config.minCount}} <div ng-click="removeMin()">Remove</div> </span> 
               <span ng-repeat="f in filter.filters" class="filter"><i style="padding-left: 6px" class="fa fa-chevron-right"></i> {{f.facet}}:{{f.value.join(",")}} <div ng-click="removeFilter(f, $index)">Remove</div> </span> 
            </li>
            
@@ -53,7 +55,7 @@
             <div histogram data="data.histogram" filter="filter" loading="loading.histogram"></div>
         </div>
         <div class="sort">
-            <label>Sort documents</label>
+            <label>Sort</label>
             <select ng-model="filter.sortDocuments" ng-change="changeSort()">
                 <option value="relevance">Relevance</option>
                 <option value="date">Date</option>
@@ -61,6 +63,9 @@
                 <option value="stars">Stars</option>
                 <option value="stars-desc">Stars (Desc)</option>
             </select>
+            <button>
+                <i class="fa fa-download" ng-click="downloadDocuments()"></i>
+            </button>
         </div>
         </ul>
     </div>

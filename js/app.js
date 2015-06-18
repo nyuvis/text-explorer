@@ -115,6 +115,11 @@ Tex.controller('texCtrl', function ($scope, es, $sce) {
         _gaq.push(['_trackEvent', 'Document', 'Removed', '']);
     };
     
+    $scope.removeMin = function () {
+        $scope.config.minCount = 1;
+        $scope.loadData();
+    };
+    
     $scope.loadState = function (state) {
         $scope.filter = state.filter;
         $scope.setUrl();
@@ -168,6 +173,59 @@ Tex.controller('texCtrl', function ($scope, es, $sce) {
         $scope.selectedCase = $scope.cases[$scope.cases.length - 1];
         _gaq.push(['_trackEvent', 'Cases', 'Add', '']);
     };
+    
+    $scope.getCsvValue = function (obj, field) {
+        if (obj[field]) {
+            return '"' + obj[field].replace(/\r?\n|\r/g, "") + '"';
+        }
+        return "";
+    };
+    
+    $scope.downloadDocuments = function () {
+        var header = "",
+            line = "",
+            docRef = $scope.data.documents[0],
+            pom = document.createElement('a'),
+            event;
+        
+       /*
+        
+        header = Object.keys(docRef.business).map(function (v) {return "business_" + v; }).join(";");
+        header += Object.keys(docRef.user).map(function (v) {return "user_" + v; }).join(";");
+        header += Object.keys(docRef.review).map(function (v) {return "review_" + v; }).join(";");
+        header += "\r\n";
+        $scope.data.documents.forEach(function (docRef) {
+            line += Object.keys(docRef.business).map(function (v) {return $scope.getCsvValue(docRef.business, v); }).join(";");
+            line += Object.keys(docRef.user).map(function (v) {return $scope.getCsvValue(docRef.user, v); }).join(";");
+            line += Object.keys(docRef.review).map(function (v) {return $scope.getCsvValue(docRef.review, v); }).join(";");
+            line += "\r\n";
+        });
+        */
+        
+        $scope.flatDocument = function (d) {
+            var f = {};
+            Object.keys(d.review).forEach(function (k) { f["review_" + k] = d.review[k]; });
+            Object.keys(d.business).forEach(function (k) { f["business_" + k] = d.business[k]; });
+            Object.keys(d.user).forEach(function (k) { f["user_" + k] = d.user[k]; });
+            return f;
+        };
+        
+        pom.setAttribute('href', 'data:text/csv;charset=utf-8,' +
+                          encodeURIComponent(Papa.unparse($scope.data.documents.map(function (d) {return $scope.flatDocument(d); }))));
+        pom.setAttribute('download', "documents.csv");
+        
+        if (document.createEvent) {
+            event = document.createEvent('MouseEvents');
+            event.initEvent('click', true, true);
+            pom.dispatchEvent(event);
+        } else {
+            pom.click();
+        }
+        _gaq.push(['_trackEvent', 'Documents', 'Download', '']);
+        
+    };
+    
+    
     
     $scope.downloadCases = function () {
         var pom = document.createElement('a'), event;
