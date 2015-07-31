@@ -455,11 +455,13 @@ Tex.directive("histogram", function () {
                         return d.percent ? percentColor(d.percent) : countColor(d.doc_count);
                     });
                 
+                var idxS = scope.data.findIndex(function (d) { return d.key_as_string === scope.filter.date.from.desc; });
+                var idxE = scope.data.findIndex(function (d) { return d.key_as_string === scope.filter.date.to.desc; });
                 
-                
-                brush.extent([x(scope.data.findIndex(function (d) { return d.key_as_string === scope.filter.date.from.desc; })),
-                              x(scope.data.findIndex(function (d) { return d.key_as_string === scope.filter.date.to.desc; })) + x.rangeBand()]);
-                
+                if(idxS > 0 || idxE < scope.data.length -1) {
+                    brush.extent([x(idxS),
+                              x(idxE) + x.rangeBand()]);
+                }
                 svg.selectAll(".brush").remove();
                 
                 gBrush = svg.append("g")
@@ -469,7 +471,7 @@ Tex.directive("histogram", function () {
             
                 gBrush.selectAll("rect")
                     .attr("height", "9px")
-                    .attr("y", "21px");
+                    //.attr("y", "21px");
             }
             
             scope.setShow = function (to) {
