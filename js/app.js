@@ -374,7 +374,7 @@ Tex.controller('texCtrl', function ($scope, es, $sce) {
     
     /* Functions ----------------------------------*/
     $scope.readUrl = function () {
-        var attrs = decodeURIComponent(location.hash.substring(1)).split("&");
+        var attrs = decodeURIComponent(location.hash.substring(1)).split("|");
         
         $scope.filter = {};
         $scope.filter.sortDocuments = "relevance";
@@ -441,7 +441,7 @@ Tex.controller('texCtrl', function ($scope, es, $sce) {
             url.push("filters=[" + facets.filter(Utils.onlyUnique).join(";") + "]");
             
         }
-        window.location.hash = url.length > 0 ? "#" + url.join("&") : "";
+        window.location.hash = url.length > 0 ? "#" + url.join("|") : "";
     };
     
     /*Utils ---------------------------------------*/
