@@ -125,6 +125,113 @@ var facets = {
         
         
     },
+    numReviews: function (facet, data) {
+        'use strict';
+        var title, table, avg, tdsCount, tdsPercent,
+            barWidth = 75,
+            countScale = d3.scale.linear().range([0, barWidth]).domain([0, data.max]),
+            percentScale = d3.scale.linear().range([0, barWidth]).domain([0, data.maxPercent]);
+        
+        
+        function buildTable() {
+            table = facet.board.append("table");
+            var footer, header = table.append("tr"),
+                lines = table.selectAll(".line").data(data.data)
+                .enter()
+                .append("tr")
+                .attr("class", "line")
+                .on("click", function (d) {
+                    facet.onSelect(d, data);
+                });
+            header.append("th").text("");
+            
+            
+            
+            
+            lines.append("td")
+                .attr("class", "label")
+                .text(function (d) {return d.key + (d.key === 1 ? " review" : " reviews"); });
+            
+            if (data.maxPercent) {
+                header.append("th").text("Proportion");
+                tdsPercent = lines.append("td")
+                    .attr("class", "bar");
+
+                tdsPercent.append("div")
+                        .attr("class", "barBase")
+                    .on("mouseover", function (d) {
+                        facet.showToolTip('<label>Count: </label><span>' + d.doc_count + "</span></br>");
+                    })
+                    .on("mouseout", function (d) {
+                        facet.hideToolTip();
+                    });
+
+
+                tdsPercent.append("div")
+                    .attr("class", "barValue")
+                    .on("mouseover", function (d) {
+                        facet.showToolTip('<label>Percent: </label><span>' + (d.percent * 100).toFixed(2) + "%" + "</span></br>");
+                    })
+                    .on("mouseout", function (d) {
+                        facet.hideToolTip();
+                    })
+                    .style({
+                        width: function (d) {return percentScale(d.percent) + 'px'; },
+                        "background-color": function (d) { return facet.colors.percentDis(d.percent); }
+                    });
+            }
+            header.append("th").text("Count");
+            tdsCount = lines.append("td")
+                .attr("class", "bar");
+            
+            tdsCount.append("div")
+                    .attr("class", "barBase")
+                .on("mouseover", function (d) {
+                    facet.showToolTip('<label>Count: </label><span>' + d.doc_count + "</span></br>");
+                })
+                .on("mouseout", function (d) {
+                    facet.hideToolTip();
+                });
+            
+            tdsCount.append("div")
+                .attr("class", "barValue")
+                .on("mouseover", function (d) {
+                    facet.showToolTip('<label>Count: </label><span>' + d.doc_count + "</span></br>");
+                })
+                .on("mouseout", function (d) {
+                    facet.hideToolTip();
+                })
+                .style({
+                    width: function (d) {return countScale(d.doc_count) + 'px'; },
+                    "background-color": function (d) { return facet.colors.countDis(d.doc_count); }
+                });
+            
+            lines.append("td")
+                .attr("class", "value")
+                .text(function (d) {return " " + d.doc_count; });
+            header.append("th").text("");
+            footer = table.append("tr").attr("class", "footer");
+            footer.append("td").text("");
+            if (data.maxPercent) {
+                footer.append("td").attr("class", "maxValue").text((data.maxPercent * 100).toFixed(3) + '%');
+            }
+            footer.append("td").attr("class", "maxValue").text(data.max);
+            footer.append("td").text("");
+        }
+        
+        facet.build = function () {
+            var sum = 0, weightedSum = 0;
+            data.data.forEach(function (d) {
+                sum += d.doc_count;
+                weightedSum += d.doc_count * d.key;
+            });
+            
+            
+            buildTable();
+        };
+        
+        
+    },
     provider: function (facet, data) {
         'use strict';
         var title, table, avg, tdsCount, tdsPercent,

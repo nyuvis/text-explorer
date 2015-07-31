@@ -106,6 +106,9 @@ ES.factory('es', function (esFactory) {
         if (self.hasFacets(filters)) {
             facets = filters.filters.map(function (f) {
                 return "(" + f.value.map(function (v) {
+                    if(v[0] === ">" || v[0] === "<") {
+                        return f.det.field + ":(" + v + ")";
+                    }
                     return f.det.field + ":\"" + v + "\"";
                 }).join(" OR ") + ")";
             }).join(" AND ");
@@ -143,9 +146,17 @@ ES.factory('es', function (esFactory) {
         };
     };
     
-    self.agg = function (field, significant, minCount) {
+    self.agg = function (field, significant, minCount, script) {
         minCount = minCount || 1;
         if (significant) {
+            if(script) {
+                return {
+                    "terms": {
+                        "script": script,
+                        "size": 500,
+                    }
+                };
+            }
             return {
                 "significant_terms": {
                     "field": field,
@@ -157,6 +168,14 @@ ES.factory('es', function (esFactory) {
                 }
             };
         } else {
+            if(script) {
+                return {
+                    "terms": {
+                        "script": script,
+                        "size": 500,
+                    }
+                };
+            }
             return {
                 "terms": {
                     "field": field,
@@ -346,7 +365,7 @@ ES.factory('es', function (esFactory) {
             significant = true;
         }
         facets.forEach(function (f) {
-            query.aggs[f.title] = self.agg(f.field, significant, config.minCount);
+            query.aggs[f.title] = self.agg(f.field, significant, config.minCount, f.script);
         });
         
         return self.client().search({
@@ -372,6 +391,21 @@ ES.factory('es', function (esFactory) {
                 
                 if (k === "Rating") {
                     result.aggregations[k].buckets.sort(Utils.fieldSort("key"));
+                }
+                if (k === "NumReviews") {
+                    result.aggregations[k].buckets.sort(function(a, b) { 
+                        var keya = parseInt(a.key.replace(">", "").replace("=", ""));
+                        var keyb = parseInt(b.key.replace(">", "").replace("=", ""));
+                        
+                        if(a.key[0] === ">" && b.key[0] !== ">") {
+                            return 1;
+                        }
+                        if(a.key[0] !== ">" && b.key[0] === ">") {
+                            return -1;
+                        }
+                        
+                        return keya - keyb;
+                    });
                 }
                 facs.push({facet: k, data: result.aggregations[k].buckets, others: result.aggregations[k].sum_other_doc_count, max: max, maxPercent: maxPercent, order: order, title: title, directive: directive});
             });

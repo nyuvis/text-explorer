@@ -342,6 +342,39 @@ body em {
   margin-right: 5px;
   vertical-align: middle;
 }
+.facet-numReviews table {
+  margin-top: -5px;
+}
+.facet-numReviews th {
+  padding-top: 5px;
+}
+.facet-numReviews .label {
+  text-align: right;
+}
+.facet-numReviews .bar {
+  width: 75px;
+}
+.facet-numReviews .barBase {
+  height: 9px;
+  margin-top: 2px;
+  background-color: #eceff1;
+}
+.facet-numReviews .barValue {
+  height: 9px;
+  background-color: #607d8b;
+  margin-top: -9px;
+}
+.facet-numReviews .value {
+  padding-left: 5px;
+}
+.facet-numReviews .footer td {
+  font-size: 9px;
+  text-align: right;
+  padding-right: 3px;
+}
+.facet-numReviews .footer .maxValue {
+  border-right: solid 1px #4d4d4f;
+}
 .facet-rating table {
   margin-top: -5px;
 }
