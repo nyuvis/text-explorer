@@ -1,23 +1,23 @@
 <!DOCTYPE html>
 <html ng-app="Tex">
 <head>
-    <title>Text Explorer</title>
+    <title>RevEx</title>
     <meta charset="UTF-8">
     <meta name="description" content="" />
     <meta name="keywords" content="" />
     <link rel="shortcut icon" href="images/favico.png" />
-    <link href='http://fonts.googleapis.com/css?family=Roboto:400,300,700' rel='stylesheet' type='text/css'>
-    <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css">
+    <link href='vendors/roboto.css' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" href="vendors/font-awesome.min.css">
     <link rel="stylesheet" href="css/style.css" />
     
     <script src="vendors/angular.min.js"></script>
     <script src="vendors/angular-sanitize.min.js"></script>
     <script src="vendors/elasticsearch.angular.min.js"></script>
     <script src="vendors/d3.min.js"></script>
-    <script src="http://d3js.org/topojson.v1.min.js"></script>
+    <script src="vendors/topojson.v1.min.js"></script>
     <script src="vendors/d3.layout.cloud.js"></script>
     <script src="vendors/papaparse.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.10.3/moment.min.js"></script>
+    <script src="vendors/moment.min.js"></script>
     <script src="js/states.js"></script>
     <script src="js/utils.js"></script>
     <script src="js/es.js"></script>
@@ -49,7 +49,7 @@
     <div id="Summary">
         <div class="stats">
             <h2>Hits: {{data.total}}</h2><br />
-            <label>{{filter.date.from.desc}} to {{filter.date.to.desc}}</label>
+            <label><input type="datetime" ng-model="filter.date.from.desc" style="width: 60px; border:none; border-bottom:solid 1px #ccc"  ng-model-options="{ updateOn: 'blur' }" />  to <input type="datetime" ng-model="filter.date.to.desc" style="width: 60px; border:none; border-bottom:solid 1px #ccc" /></label>
         </div>
         <div class="histogram">  
             <div histogram data="data.histogram" filter="filter" loading="loading.histogram"></div>

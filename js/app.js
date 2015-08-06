@@ -5,7 +5,8 @@ var Tex = angular.module('Tex', ['ES', 'ngSanitize']);
 
 Tex.controller('texCtrl', function ($scope, es, $sce) {
     'use strict';
-    var host = "vgc.poly.edu/projects/opsense",
+    var //host = "localhost:9500",
+        host ="vgc.poly.edu/projects/opsense",
         index = "yelp";
     
     $scope.security = {};
@@ -24,7 +25,7 @@ Tex.controller('texCtrl', function ($scope, es, $sce) {
     $scope.facets = [
         {order: 1, title: "Rating", field: "review.rating", directive: "rating"},
         {order: 2, title: "NumReviews", field: "business.review_count", directive: "numReviews", 
-            script: "doc['business.review_count'].value > 5 ? (doc['business.review_count'].value > 10 ? (doc['business.review_count'].value > 100 ? '>100' : '>10') : '>5') : doc['business.review_count'].value"},
+            script: "doc['business.review_count'].value > 5 ? (doc['business.review_count'].value > 10 ?              (doc['business.review_count'].value > 100 ? '>100' : '>10') : '>5') : doc['business.review_count'].value"},
         {order: 3, title: "Provider", field: "business.name", directive: "provider"},
         {order: 4, title: "Category", field: "business.category", directive: "provider"},
         {order: 5, title: "State", field: "business.state", directive: "provider"}
@@ -311,6 +312,7 @@ Tex.controller('texCtrl', function ($scope, es, $sce) {
         $scope.cases = store;
     };
     
+    $scope.$watch(function () { return $scope.filter.date.from.desc; }, function () {$scope.setUrl(); }, true);
     $scope.$watch(function () { return $scope.cases; }, function () {$scope.saveCases(); }, true);
     $scope.saveCases = function () {
         if ($scope.cases) {
@@ -454,6 +456,7 @@ Tex.controller('texCtrl', function ($scope, es, $sce) {
     /*Init --------------------------------------*/
     $scope.init = function () {
         es.params({
+            //host: "localhost:9500",
             host: "vgc.poly.edu/projects/opsense",
             index: "yelp"
         });
