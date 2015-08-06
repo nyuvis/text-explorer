@@ -312,7 +312,8 @@ Tex.controller('texCtrl', function ($scope, es, $sce) {
         $scope.cases = store;
     };
     
-    $scope.$watch(function () { return $scope.filter.date.from.desc; }, function () {$scope.setUrl(); }, true);
+    $scope.$watch(function () { return !$scope.filter.date ? undefined : $scope.filter.date.from.desc; }, function () {console.log('changed'); $scope.setUrl(); }, true);
+    $scope.$watch(function () { return !$scope.filter.date ? undefined : $scope.filter.date.to.desc; }, function () {$scope.setUrl(); }, true);
     $scope.$watch(function () { return $scope.cases; }, function () {$scope.saveCases(); }, true);
     $scope.saveCases = function () {
         if ($scope.cases) {
@@ -432,7 +433,7 @@ Tex.controller('texCtrl', function ($scope, es, $sce) {
         if (es.hasSearch($scope.filter)) {
             url.push("search=" + $scope.filter.search);
         }
-        if (es.filterDate($scope.filter)) {
+        if (es.filterDate($scope.filter) || ($scope.filter.date && $scope.filter.date.from.desc)) {
             url.push("date=" + $scope.filter.date.from.desc + " TO " + $scope.filter.date.to.desc);
         }
         if (es.hasFacets($scope.filter)) {
