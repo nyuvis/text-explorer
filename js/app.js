@@ -1,13 +1,10 @@
 /*jslint  nomen: true*/
-/*global angular, _gaq, Utils, alert, console, moment, FileReader, prompt, d3*/
+/*global angular, _gaq, Utils, alert, console, moment, FileReader, prompt, d3, Papa*/
 
 var Tex = angular.module('Tex', ['ES', 'ngSanitize']);
 
 Tex.controller('texCtrl', function ($scope, es, $sce) {
     'use strict';
-    var //host = "localhost:9500",
-        host ="vgc.poly.edu/projects/opsense",
-        index = "yelp";
     
     $scope.security = {};
     $scope.data = {};
@@ -24,11 +21,12 @@ Tex.controller('texCtrl', function ($scope, es, $sce) {
     
     $scope.facets = [
         {order: 1, title: "Rating", field: "review.rating", directive: "rating"},
-        {order: 2, title: "NumReviews", field: "business.review_count", directive: "numReviews", 
-            script: "doc['business.review_count'].value > 5 ? (doc['business.review_count'].value > 10 ?              (doc['business.review_count'].value > 100 ? '>100' : '>10') : '>5') : doc['business.review_count'].value"},
-        {order: 3, title: "Provider", field: "business.name", directive: "provider"},
-        {order: 4, title: "Category", field: "business.category", directive: "provider"},
-        {order: 5, title: "State", field: "business.state", directive: "provider"}
+        {order: 2, title: "NumReviews", field: "business.review_count", directive: "numReviews",
+            script: "doc['business.review_count'].value > 5 ? (doc['business.review_count'].value > 10 ? (doc['business.review_count'].value > 100 ? '>100' : '>10') : '>5') : doc['business.review_count'].value"},
+        {order: 4, title: "Responses", field: "review.hasResponse", directive: "provider"},
+        {order: 4, title: "Provider", field: "business.name", directive: "provider"},
+        {order: 5, title: "Category", field: "business.category", directive: "provider"},
+        {order: 6, title: "State", field: "business.state", directive: "provider"}
     ];
     
     /*Properties -----------------------------------*/
@@ -151,6 +149,11 @@ Tex.controller('texCtrl', function ($scope, es, $sce) {
         _gaq.push(['_trackEvent', 'Documents', 'Changed Sort', '']);
     };
     
+    $scope.changeShow = function () {
+        $scope.loadDocuments();
+        _gaq.push(['_trackEvent', 'Documents', 'Changed Show', '']);
+    };
+    
     $scope.changeSearch = function () {
         _gaq.push(['_trackEvent', 'Search', 'Changed', '']);
     };
@@ -185,9 +188,8 @@ Tex.controller('texCtrl', function ($scope, es, $sce) {
     };
     
     $scope.downloadDocuments = function () {
-        var header = "",
-            line = "",
-            docRef = $scope.data.documents[0],
+        var //header = "",
+            //docRef = $scope.data.documents[0],
             pom = document.createElement('a'),
             event;
         
@@ -274,8 +276,8 @@ Tex.controller('texCtrl', function ($scope, es, $sce) {
         if ($scope.security.password && $scope.security.password.length > 0) {
             $scope.security.user = "propublica";
             $scope.loading.login += 1;
-            es.login($scope.security).then(
-                function (result) {
+            es.login($scope.security).then(function (result) {
+                    console.log('go');
                     if (result) {
                         sessionStorage.setItem("user", $scope.security.user);
                         sessionStorage.setItem("password", $scope.security.password);
@@ -402,11 +404,11 @@ Tex.controller('texCtrl', function ($scope, es, $sce) {
                 $scope.filter.filters = [];
                 value = value.replace("[", "").replace("]", "");
                 value.split(";").forEach(function (filter) {
-                    var key = filter.split(":")[0].trim(),
-                        value = filter.split(":")[1].trim(),
+                    var _key = filter.split(":")[0].trim(),
+                        _value = filter.split(":")[1].trim(),
                         f = {};
-                    f.facet = key;
-                    f.value = value.split(",").map(function (v) { return v.trim(); });
+                    f.facet = _key;
+                    f.value = _value.split(",").map(function (v) { return v.trim(); });
                     
                     f.det = $scope.facets.find(function (fc) { return fc.title === f.facet; });
                     
@@ -448,17 +450,17 @@ Tex.controller('texCtrl', function ($scope, es, $sce) {
     };
     
     /*Utils ---------------------------------------*/
-    function message(text, code) {
+    /*function message(text, code) {
         if (code === 401) {
             document.getElementById("initialSplash").innerHTML = text;
         }
-    }
+    }*/
     
     /*Init --------------------------------------*/
     $scope.init = function () {
         es.params({
             //host: "localhost:9500",
-            host: "vgc.poly.edu/projects/opsense",
+            host: "vgc.poly.edu/projects/es-gateway",
             index: "yelp"
         });
         
@@ -509,7 +511,7 @@ Tex.directive("fileread", [function () {
         scope: {
             fileread: "="
         },
-        link: function (scope, element, attributes) {
+        link: function (scope, element) {
             element.bind("change", function (changeEvent) {
                 
                 var reader = new FileReader();

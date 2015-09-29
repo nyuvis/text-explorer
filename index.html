@@ -63,6 +63,11 @@
                 <option value="stars">Stars</option>
                 <option value="stars-desc">Stars (Desc)</option>
             </select>
+            <label>Show</label>
+            <select ng-model="filter.showText" ng-change="changeShow()">
+                <option value="text">Review</option>
+                <option value="response">Response</option>
+            </select>
             <button>
                 <i class="fa fa-download" ng-click="downloadDocuments()"></i>
             </button>
@@ -111,7 +116,7 @@
            <div class="list">
                 <div class="document" ng-repeat="doc in data.documents" ng-click="selectDocument(doc)">
                     <div class="header">
-                        <span class="business"><a ng-href="{{doc.review.url}}" target="_blank">{{doc.business.name}}</a></span>
+                        <span class="business"><a ng-href="{{doc.review.url + '&q=' + filter.search}}" target="_blank">{{doc.business.name}}</a></span>
                         <span class="details"> - {{doc.business.category | list}} - {{doc.review.created | date:'MMM dd, yyyy'}}</span>
                         <span class="stars" ng-bind-html="doc.review.rating | stars"></span>
                     </div>

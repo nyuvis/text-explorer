@@ -4,7 +4,7 @@ var ES = angular.module('ES', ['elasticsearch']);
 ES.factory('es', function (esFactory) {
     'use strict';
     var self = {}, size = 100,
-        myStop = ["i", "my", "dr", "me", "you", "so", "all", "he", "she", "it", "they", "we", "our"];
+        myStop = ["i", "my", "dr", "me", "you", "so", "all", "he", "she", "it", "they", "we", "our", "would", "when", "them", "do", "go", "here", "one", "were", "get", "got", "out", "had", "what", "should"];
     
     self.params = function (params) {
         Object.keys(params).forEach(function (p) {
@@ -39,7 +39,7 @@ ES.factory('es', function (esFactory) {
         self.user = security.user;
         self.password = security.password;
         self._client = undefined;
-        
+        console.log("aa");
         var query = {
             "aggs": {
                 "dateMax": {
