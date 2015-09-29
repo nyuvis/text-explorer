@@ -116,7 +116,7 @@
            <div class="list">
                 <div class="document" ng-repeat="doc in data.documents" ng-click="selectDocument(doc)">
                     <div class="header">
-                        <span class="business"><a ng-href="{{doc.review.url + '&q=' + filter.search}}" target="_blank">{{doc.business.name}}</a></span>
+                        <span class="business"><a ng-href="{{doc.review.url}}" target="_blank">{{doc.business.name}}</a></span>
                         <span class="details"> - {{doc.business.category | list}} - {{doc.review.created | date:'MMM dd, yyyy'}}</span>
                         <span class="stars" ng-bind-html="doc.review.rating | stars"></span>
                     </div>
