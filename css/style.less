@@ -20,6 +20,10 @@ body{
     }
 }
 
+.multiSelect {
+  text-align: left;
+}
+
 @SearchBarHeight: 25px;
 #SearchBar{
     position: fixed;
@@ -297,6 +301,17 @@ body{
         margin: 0px;
         border-bottom: solid 1px @Divider;
     }
+    
+    .line {
+        user-select: none;
+        -moz-user-select: -moz-none;
+       -khtml-user-select: none;
+       -webkit-user-select: none;
+    }
+    .line.selected {
+        background-color: #ccc;
+    }
+    
 }
 .suggestions{
     h3{
@@ -332,6 +347,10 @@ body{
     }
     .label{
         text-align: left;
+         user-select: none;
+        -moz-user-select: -moz-none;
+        -khtml-user-select: none;
+        -webkit-user-select: none;
     }
     .bar{
         margin: 0px;

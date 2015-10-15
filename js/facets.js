@@ -1,5 +1,12 @@
 /*global Tex, d3, console, Utils, topojson*/
-
+var selecting = {};
+document.documentElement.onkeyup = function(a,b,c) {
+    if(a.keyCode === 16) {
+        if(selecting.active) {
+            selecting.done();
+        }
+    }
+}
 var percentColor = function (value) {
         'use strict';
         if (value < 0.001) { return "hsl(200, 20%, 80%)"; }
@@ -34,7 +41,22 @@ var facets = {
                 .append("tr")
                 .attr("class", "line")
                 .on("click", function (d) {
-                    facet.onSelect(d, data);
+                    d._selected = d._selected ? false : true;
+                    d3.select(this).classed("selected", d._selected);
+                    if(d3.event.shiftKey){
+                        d3.event.preventDefault();
+                        selecting = { active: true, done: function() { 
+                            var selecteds = data.data.filter(function(f) { return f._selected; });
+                            selecting = {};
+                            facet.onSelect(d, data, selecteds);
+                        }}
+                    }else {
+                        var selecteds = data.data.filter(function(f) { return f._selected; });
+                        selecting = {};
+                        facet.onSelect(d, data, selecteds);
+                    }
+                    
+                    
                 });
             header.append("th").text("");
             
@@ -141,7 +163,20 @@ var facets = {
                 .append("tr")
                 .attr("class", "line")
                 .on("click", function (d) {
-                    facet.onSelect(d, data);
+                    d._selected = d._selected ? false : true;
+                    d3.select(this).classed("selected", d._selected);
+                    if(d3.event.shiftKey){
+                        d3.event.preventDefault();
+                        selecting = { active: true, done: function() { 
+                            var selecteds = data.data.filter(function(f) { return f._selected; });
+                            selecting = {};
+                            facet.onSelect(d, data, selecteds);
+                        }}
+                    }else {
+                        var selecteds = data.data.filter(function(f) { return f._selected; });
+                        selecting = {};
+                        facet.onSelect(d, data, selecteds);
+                    }
                 });
             header.append("th").text("");
             
@@ -251,6 +286,20 @@ var facets = {
                 .attr("class", "line")
                 .on("click", function (d) {
                     facet.onSelect(d, data);
+                    d._selected = d._selected ? false : true;
+                    d3.select(this).classed("selected", d._selected);
+                    if(d3.event.shiftKey){
+                        d3.event.preventDefault();
+                        selecting = { active: true, done: function() { 
+                            var selecteds = data.data.filter(function(f) { return f._selected; });
+                            selecting = {};
+                            facet.onSelect(d, data, selecteds);
+                        }}
+                    }else {
+                        var selecteds = data.data.filter(function(f) { return f._selected; });
+                        selecting = {};
+                        facet.onSelect(d, data, selecteds);
+                    }
                 });
             header.append("th").text("");
             
@@ -615,8 +664,8 @@ Tex.directive("facet", function () {
                     build: function () {
                         facet.board.append('div').text('todo');
                     },
-                    onSelect: function (d, facet) {
-                        scope.$parent.$parent.addFacetFilter(d, facet);
+                    onSelect: function (d, facet,multiples) {
+                        scope.$parent.$parent.addFacetFilter(d, facet, multiples);
                     },
                     showToolTip: function (text) {
                         scope.$parent.$parent.showToolTip(text);
