@@ -285,7 +285,7 @@ var facets = {
                 .append("tr")
                 .attr("class", "line")
                 .on("click", function (d) {
-                    facet.onSelect(d, data);
+                    //facet.onSelect(d, data);
                     d._selected = d._selected ? false : true;
                     d3.select(this).classed("selected", d._selected);
                     if(d3.event.shiftKey){
